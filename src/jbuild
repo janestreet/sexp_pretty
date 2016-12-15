@@ -1,0 +1,9 @@
+(library
+ ((name sexp_pretty)
+  (public_name sexp_pretty)
+  (extra_disabled_warnings (3))
+  (js_of_ocaml ())
+  (preprocess (pps (ppx_base)))
+  (libraries (base sexplib re.str))))
+
+(enforce_style ())
