@@ -7,3 +7,5 @@
   (libraries (base sexplib re.str))))
 
 (enforce_style ())
+
+(jbuild_version jane_street)
