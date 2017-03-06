@@ -10,11 +10,12 @@ build: [
 ]
 depends: [
   "base"
-  "jbuilder"
+  "jbuilder"                {build}
   "ppx_base"
   "ppx_driver"
   "sexplib"
-  "re"         {>= "1.5.0"}
+  "ocaml-migrate-parsetree"
+  "re"                      {>= "1.5.0"}
 ]
 available: [ ocaml-version >= "4.03.0" ]
 descr: "
