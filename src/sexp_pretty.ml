@@ -1,121 +1,38 @@
-open! Import
-open! Pretty_print_config
+open Base
+open Int
+open Config
+module Sexp = Sexplib.Sexp
 
 
 module W = Sexp.With_layout
 
 module Format = struct
-  include Format
+  include Caml.Format
 
   let pp_listi sep ?(offset = 0) ?singleton pp fmt list =
     match list with
     | [] -> ()
     | hd::tl ->
       (match singleton, tl with Some pp, [] -> pp offset fmt hd | _ -> pp offset fmt hd);
-      List.iteri tl ~f:(fun i el -> Format.fprintf fmt sep; pp (i+offset+1) fmt el)
+      List.iteri tl ~f:(fun i el -> Caml.Format.fprintf fmt sep; pp (i+offset+1) fmt el)
   ;;
 
   let pp_list sep ?singleton pp fmt list =
     let singleton = Option.map singleton ~f:(fun singleton -> (fun _ -> singleton)) in
     pp_listi sep ?singleton (fun _ -> pp) fmt list
   ;;
+
+
+  [@@@ocaml.warning "-3"]
+
+  let pp_set_tab = Format.pp_set_tab
+  let pp_print_tab = Format.pp_print_tab
+  let pp_open_tbox = Format.pp_open_tbox
+  let pp_close_tbox = Format.pp_close_tbox
+
 end
 
-
-type conf = t
-
-let default_color_scheme = [| Magenta; Yellow; Cyan; White |]
-
-let default_conf = {
-  indent                  = 2;
-  data_alignment          = Data_aligned (
-    Parens_alignment false,
-    Atom_threshold 6,
-    Character_threshold 50,
-    Depth_threshold 3
-  );
-  color_scheme            = default_color_scheme;
-  atom_coloring           = Color_first 3;
-  atom_printing           = Escaped;
-  paren_coloring          = true;
-  closing_parens          = Same_line;
-  opening_parens          = Same_line;
-  comments                = Print (
-    Indent_comment 3,
-    Some Green,
-    Pretty_print
-  );
-  singleton_limit         = Singleton_limit (
-    Atom_threshold 3,
-    Character_threshold 40
-  );
-  leading_threshold       = (
-    Atom_threshold 3,
-    Character_threshold 40
-  );
-  separator               = Empty_line;
-  sticky_comments         = false;
-}
-
-let update_conf conf ~color ~interpret_atom_as_sexp ~drop_comments ~new_line_separator
-      ~custom_data_alignment =
-  let conf =
-    if color
-    then conf
-    else match conf.comments with
-      | Print (indent,Some _,style) ->
-        {conf with
-         atom_coloring = Color_none
-       ; paren_coloring = false
-       ; comments = Print (indent,None,style) }
-      | _ ->
-        {conf with
-         atom_coloring = Color_none
-       ; paren_coloring = false }
-  in
-  let conf =
-    if interpret_atom_as_sexp
-    then {conf with atom_printing = Interpreted}
-    else conf
-  in
-  let conf =
-    if drop_comments
-    then {conf with comments = Drop }
-    else conf
-  in
-  let conf =
-    match new_line_separator with
-    | None -> conf
-    | Some true -> {conf with separator = Empty_line}
-    | Some false -> {conf with separator = No_separator}
-  in
-  let conf =
-    match custom_data_alignment with
-    | None -> conf
-    | Some data_alignment -> { conf with data_alignment }
-  in
-  conf
-
-module Config = struct
-  type t = Pretty_print_config.t [@@deriving sexp_of]
-  let default = default_conf
-  let create
-        ?(color=false)
-        ?(interpret_atom_as_sexp=false)
-        ?(drop_comments=false)
-        ?(new_line_separator=false)
-        ?(custom_data_alignment)
-        ()
-    =
-    update_conf
-      default_conf
-      ~color
-      ~interpret_atom_as_sexp
-      ~drop_comments
-      ~new_line_separator:(Some new_line_separator)
-      ~custom_data_alignment
-  ;;
-end
+module Config = Config
 
 type state = {
   is_comment : bool
@@ -127,17 +44,26 @@ let start_state = {
 
 let split = Re_str.regexp "[ \t]+"
 
-let sparser = Sexp.With_layout.Parser.sexp Sexp.With_layout.Lexer.main
+let color_to_code = function
+  | Black   -> 30
+  | Red     -> 31
+  | Green   -> 32
+  | Yellow  -> 33
+  | Blue    -> 34
+  | Magenta -> 35
+  | Cyan    -> 36
+  | White   -> 37
+  | Default -> 39
 
 let rainbow_open_tag conf tag =
   let args = Re_str.split split tag in
   let color_count = Array.length conf.color_scheme in
   match args with
   | "d"::n::[] ->
-    let i = Pervasives.int_of_string n in
+    let i = Int.of_string n in
     "["
     ^Int.to_string
-       (color
+       (color_to_code
           (if i<0 || color_count<1 then Default else conf.color_scheme.(i%color_count))
        )
     ^"m"
@@ -146,7 +72,7 @@ let rainbow_open_tag conf tag =
     (match conf.comments with
      | Print (_,Some clr,_) ->
        "["
-       ^Int.to_string (color clr)
+       ^Int.to_string (color_to_code clr)
        ^"m"
      | _ -> ""
     )
@@ -190,7 +116,7 @@ let pp_atom conf state ~depth ~len index fmt at =
   let should_be_colored =
     match conf.atom_coloring with
     | Color_none            -> false
-    | Color_first threshold -> index=0 && len<=threshold
+    | Color_first threshold -> Int.equal index 0 && len<=threshold
     | Color_all             -> true
   in
   if state.is_comment
@@ -372,8 +298,8 @@ module Normalize = struct
     List.filter contents ~f:(fun s -> String.length s > 0)
 
   let get_size string =
-    String.count string ~f:(fun c -> c = ' ')
-    + String.count string ~f:(fun c -> c = '\t') * tab_size
+    String.count string ~f:(fun c -> Char.equal c ' ')
+    + String.count string ~f:(fun c -> Char.equal c '\t') * tab_size
 
   exception Drop_exn
 
@@ -383,20 +309,20 @@ module Normalize = struct
   let rec of_sexp_or_comment conf : W.t_or_comment -> t = function
     | W.Comment comment -> Comment (of_comment conf comment)
     | W.Sexp    sexp    -> Sexp (of_sexp    conf sexp)
-  and of_sexp (conf:conf) : W.t -> sexp = function
+  and of_sexp (conf:Config.t) : W.t -> sexp = function
     | W.Atom (pos,atom,_escaped)  ->
       (match pre_process_atom conf pos atom with
        | `Atom atom -> Atom (atom)
        | `List list -> of_sexp_or_comment_list conf list
       )
     | W.List (_,list,_) -> of_sexp_or_comment_list conf list
-  and of_sexp_or_comment_list (conf:conf) : W.t_or_comment list -> sexp = fun list ->
+  and of_sexp_or_comment_list (conf:Config.t) : W.t_or_comment list -> sexp = fun list ->
     let list =
       List.filter_map list
         ~f:(fun el -> try Some (of_sexp_or_comment conf el) with Drop_exn -> None)
     in
     List list
-  and of_comment (conf:conf) : W.comment -> comment = function
+  and of_comment (conf:Config.t) : W.comment -> comment = function
     | W.Plain_comment (_,comment) ->
       (match conf.comments with
        | Drop -> raise Drop_exn
@@ -742,7 +668,7 @@ module Print = struct
         let leading_not_empty = leading_len>0 in
         let rest_not_empty = not(List.is_empty rest) in
         let same_line_rest =
-          conf.opening_parens = Same_line
+          Poly.equal conf.opening_parens Same_line
           && rest_not_empty
           && not(leading_not_empty)
         in
@@ -769,7 +695,7 @@ module Print = struct
           (fun fmt () -> close_parens conf state ~depth:(depth+1) fmt 1) ()
       in
       (match leading,list,forces_breakline,opened,
-             conf.closing_parens = New_line || last_forces sexp_list with
+             Poly.equal conf.closing_parens New_line || last_forces sexp_list with
       | [],[],_,Closed,_ ->
         open_parens conf state ~depth:(depth+1) fmt 1;
         close_parens conf state ~depth:(depth+1) fmt 1
@@ -818,7 +744,7 @@ module Print = struct
           (close_parens conf state ~depth:(depth+1)) (d+1)
       in
       (match atoms,forces_breakline,opened,
-             conf.closing_parens = New_line || last_forces sexp with
+             Poly.equal conf.closing_parens New_line || last_forces sexp with
       | [],_,Opened,_ -> assert false
       | atoms,true,Closed,true ->
         print_closed
@@ -954,12 +880,12 @@ let run ~next conf fmt =
       match conf.comments, t_or_comment with
       | Drop     , W.Comment _ -> loop prints_newline
       | Print _  , W.Comment _ ->
-        if prints_newline && conf.separator = Empty_line
+        if prints_newline && Poly.equal conf.separator Empty_line
         then Format.pp_print_break fmt 0 0;
         Print.pp_sexp_rainbow_toplevel conf fmt t_or_comment;
         loop false
       | _        , W.Sexp    _ ->
-        if prints_newline && conf.separator = Empty_line
+        if prints_newline && Poly.equal conf.separator Empty_line
         then Format.pp_print_break fmt 0 0;
         Print.pp_sexp_rainbow_toplevel conf fmt t_or_comment;
         loop true
@@ -968,13 +894,6 @@ let run ~next conf fmt =
   loop false;
   Format.pp_close_box fmt ();
   Format.pp_print_flush fmt ();
-;;
-
-let run_stdin_to_stdout conf =
-  let lexbuf = Lexing.from_channel Pervasives.stdin in
-  let next () = try Some (sparser lexbuf) with _ -> None in
-  let fmt = Format.formatter_of_out_channel stdout in
-  run ~next conf fmt
 ;;
 
 let dummy_pos =
@@ -995,10 +914,11 @@ module type S = sig
 
   type 'a writer = Config.t -> 'a -> sexp -> unit
 
-  val pp_formatter   : Format.formatter          writer
-  val pp_buffer      : Buffer.t                  writer
-  val pp_out_channel : Out_channel.t             writer
-  val pp_blit        : (string, unit) Blit.sub   writer
+  val pp_formatter   : Format.formatter        writer
+  val pp_formatter'  : next:(unit -> sexp option) -> Config.t -> Caml.Format.formatter -> unit
+  val pp_buffer      : Buffer.t                writer
+  val pp_out_channel : Caml.out_channel        writer
+  val pp_blit        : (string, unit) Blit.sub writer
 
   val pretty_string : Config.t -> sexp -> string
 
@@ -1010,7 +930,7 @@ module Make (M : sig
     val to_sexp_or_comment : t -> Sexp.With_layout.t_or_comment
   end) : S with type sexp := M.t = struct
 
-  type 'a writer = conf -> 'a -> M.t -> unit
+  type 'a writer = Config.t -> 'a -> M.t -> unit
 
   let pp_formatter conf fmt sexp =
     let t_or_comment = M.to_sexp_or_comment sexp in
@@ -1020,6 +940,13 @@ module Make (M : sig
     in
     run ~next conf fmt
   ;;
+
+  let pp_formatter' ~next conf fmt =
+    run ~next:(fun () ->
+      match next () with
+      | None -> None
+      | Some s -> Some (M.to_sexp_or_comment s))
+      conf fmt
 
   let pp_buffer conf buffer sexp =
     pp_formatter conf (Format.formatter_of_buffer buffer) sexp
@@ -1042,7 +969,7 @@ module Make (M : sig
 
   let sexp_to_string =
     let config = lazy (Config.create ~color:false ()) in
-    fun sexp -> pretty_string (force config) sexp
+    fun sexp -> pretty_string (Lazy.force config) sexp
   ;;
 end
 
@@ -1055,62 +982,3 @@ module Sexp_with_layout = Make (struct
     type t = W.t_or_comment
     let to_sexp_or_comment = Fn.id
   end)
-
-let configure
-      config_file
-      ~color
-      ~interpret_atom_as_sexp
-      ~drop_comments
-      ~new_line_separator
-      ~custom_data_alignment
-  =
-  let conf =
-    match config_file with
-    | Some path ->
-      Sexp.load_sexp_conv_exn path t_of_sexp
-    | None -> default_conf
-  in
-  update_conf conf ~color ~interpret_atom_as_sexp ~drop_comments ~new_line_separator
-    ~custom_data_alignment
-
-let command_main
-      ~color
-      ~config_file
-      ~drop_comments
-      ~interpret_atom_as_sexp
-      ~new_line_separator
-      ~print_settings =
-  if print_settings
-  then
-    let config =
-      configure
-        config_file
-        ~color:true
-        ~interpret_atom_as_sexp
-        ~drop_comments
-        ~new_line_separator
-        ~custom_data_alignment:None
-    in
-    let fmt = Format.formatter_of_out_channel Pervasives.stdout in
-    (setup config fmt;
-     Print.pp_sexp_rainbow_toplevel
-       {config with
-        atom_coloring  = Color_none;
-        paren_coloring = false;
-        atom_printing  = Escaped
-       }
-       fmt
-       (sexp_to_sexp_or_comment (sexp_of_t config))
-    )
-  else
-    let config =
-      configure
-        config_file
-        ~color
-        ~interpret_atom_as_sexp
-        ~drop_comments
-        ~new_line_separator
-        ~custom_data_alignment:None
-    in
-    ignore (run_stdin_to_stdout config)
-;;

@@ -1,7 +1,6 @@
 (library
  ((name sexp_pretty)
   (public_name sexp_pretty)
-  (flags (:standard -w -3))
   (preprocess (pps (ppx_base ppx_driver.runner)))
   (libraries (base sexplib re.str))))
 

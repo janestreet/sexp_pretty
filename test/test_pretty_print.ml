@@ -1,5 +1,5 @@
 open! Import
-open! Sexp_pretty.Pretty_print
+open! Sexp_pretty
 
 let normalized_sexp t =
   let rec of_t = function
@@ -22,7 +22,7 @@ let normalize conf sexp =
   |> normalized_sexp
 ;;
 
-let conf = { Config.default with Pretty_print_config.atom_printing = Interpreted }
+let conf = { Config.default with Config.atom_printing = Interpreted }
 
 let test ~input:input_sexp sexp =
   [%test_result: Sexp.t] ~expect:sexp (normalize conf input_sexp)
@@ -75,7 +75,7 @@ let%test_unit _ =
 
 (* And a couple of tests without atom interpretation *)
 
-let conf = { Config.default with Pretty_print_config.atom_printing = Escaped }
+let conf = { Config.default with Config.atom_printing = Escaped }
 
 let test ~input:input_sexp sexp =
   [%test_result: Sexp.t] ~expect:sexp (normalize conf input_sexp)

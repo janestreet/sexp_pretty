@@ -1,4 +1,6 @@
-open! Import
+open Base
+
+let of_sexp_error = Base.Not_exposed_properly.Sexp_conv.of_sexp_error
 
 
 type color =
@@ -187,13 +189,108 @@ let t_of_sexp sexp =
   then of_sexp_error "Indentation must be non-negative." sexp
   else t
 
-let color = function
-  | Black   -> 30
-  | Red     -> 31
-  | Green   -> 32
-  | Yellow  -> 33
-  | Blue    -> 34
-  | Magenta -> 35
-  | Cyan    -> 36
-  | White   -> 37
-  | Default -> 39
+
+
+
+let default_color_scheme = [| Magenta; Yellow; Cyan; White |]
+
+let default = {
+  indent                  = 2;
+  data_alignment          = Data_aligned (
+    Parens_alignment false,
+    Atom_threshold 6,
+    Character_threshold 50,
+    Depth_threshold 3
+  );
+  color_scheme            = default_color_scheme;
+  atom_coloring           = Color_first 3;
+  atom_printing           = Escaped;
+  paren_coloring          = true;
+  closing_parens          = Same_line;
+  opening_parens          = Same_line;
+  comments                = Print (
+    Indent_comment 3,
+    Some Green,
+    Pretty_print
+  );
+  singleton_limit         = Singleton_limit (
+    Atom_threshold 3,
+    Character_threshold 40
+  );
+  leading_threshold       = (
+    Atom_threshold 3,
+    Character_threshold 40
+  );
+  separator               = Empty_line;
+  sticky_comments         = false;
+}
+
+let update
+      ?color
+      ?interpret_atom_as_sexp
+      ?drop_comments
+      ?new_line_separator
+      ?custom_data_alignment
+      conf =
+  let conf =
+    match color with
+    | None -> conf
+    | Some color ->
+      if color
+      then conf
+      else match conf.comments with
+        | Print (indent,Some _,style) ->
+          {conf with
+           atom_coloring = Color_none
+         ; paren_coloring = false
+         ; comments = Print (indent,None,style) }
+        | _ ->
+          {conf with
+           atom_coloring = Color_none
+         ; paren_coloring = false }
+  in
+  let conf =
+    match interpret_atom_as_sexp with
+    | None -> conf
+    | Some interpret_atom_as_sexp ->
+      if interpret_atom_as_sexp
+      then {conf with atom_printing = Interpreted}
+      else conf
+  in
+  let conf =
+    match drop_comments with
+    | None -> conf
+    | Some drop_comments ->
+      if drop_comments
+      then {conf with comments = Drop }
+      else conf
+  in
+  let conf =
+    match new_line_separator with
+    | None -> conf
+    | Some true -> {conf with separator = Empty_line}
+    | Some false -> {conf with separator = No_separator}
+  in
+  let conf =
+    match custom_data_alignment with
+    | None -> conf
+    | Some data_alignment -> { conf with data_alignment }
+  in
+  conf
+
+let create
+      ?(color=false)
+      ?(interpret_atom_as_sexp=false)
+      ?(drop_comments=false)
+      ?(new_line_separator=false)
+      ?(custom_data_alignment)
+      ()
+  =
+  update
+    ~color
+    ~interpret_atom_as_sexp
+    ~drop_comments
+    ~new_line_separator:new_line_separator
+    ?custom_data_alignment
+    default
+;;
