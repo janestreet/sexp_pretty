@@ -1,2 +1,24 @@
 A library for pretty-printing s-expressions, using better indentation rules than
 the default pretty printer in Sexplib.
+
+The ~sexp-pp~ program reads an S-expression from stdin and
+pretty-prints it to stdout:
+
+#+BEGIN_EXAMPLE
+$ sexp-pp
+(UnOp NOT(BinOp EQ(Int 0:8u)(BinOp MINUS(Cast LOW 8(Cast LOW 32(Cast UNSIGNED 32(Var((var x_0)(ind 0)(typ(Imm 8))(vir false))))))(Int 0x41:8u))))
+(UnOp NOT (
+  BinOp EQ
+  (Int 0:8u)
+  (BinOp MINUS
+    (Cast LOW 8 (
+      Cast LOW 32 (
+        Cast UNSIGNED 32 (
+          Var (
+            (var x_0)
+            (ind 0)
+            (typ (Imm 8))
+            (vir false))))))
+    (Int 0x41:8u))))
+^D
+#+END_EXAMPLE

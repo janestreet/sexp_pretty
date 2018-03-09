@@ -1,0 +1,8 @@
+(jbuild_version 1)
+
+(executables
+ ((names (sexp_pp))
+  (public_names (sexp-pp))
+  (flags (:include ${ROOT}/ocamlflags))
+  (libraries (sexp_pretty))
+  (package sexp_pretty)))
