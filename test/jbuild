@@ -2,7 +2,7 @@
  ((name sexp_pretty_test)
 (flags (:standard -safe-string))
   (libraries (core_kernel sexp_pretty))
-  (preprocess (pps (ppx_jane ppx_driver.runner)))
+  (preprocess (pps (ppx_jane ppxlib.runner)))
 ))
 
 
