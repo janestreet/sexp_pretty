@@ -22,14 +22,6 @@ module Format = struct
     pp_listi sep ?singleton (fun _ -> pp) fmt list
   ;;
 
-
-  [@@@ocaml.warning "-3"]
-
-  let pp_set_tab = Format.pp_set_tab
-  let pp_print_tab = Format.pp_print_tab
-  let pp_open_tbox = Format.pp_open_tbox
-  let pp_close_tbox = Format.pp_close_tbox
-
 end
 
 module Config = Config
@@ -914,11 +906,11 @@ module type S = sig
 
   type 'a writer = Config.t -> 'a -> sexp -> unit
 
-  val pp_formatter   : Format.formatter        writer
+  val pp_formatter   : Format.formatter     writer
   val pp_formatter'  : next:(unit -> sexp option) -> Config.t -> Caml.Format.formatter -> unit
-  val pp_buffer      : Buffer.t                writer
-  val pp_out_channel : Caml.out_channel        writer
-  val pp_blit        : (string, unit) Blit.sub writer
+  val pp_buffer      : Buffer.t                  writer
+  val pp_out_channel : Caml.out_channel          writer
+  val pp_blit        : (string, unit) Blit.sub   writer
 
   val pretty_string : Config.t -> sexp -> string
 

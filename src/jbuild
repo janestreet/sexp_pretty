@@ -2,7 +2,6 @@
  ((name sexp_pretty)
   (public_name sexp_pretty)
   (preprocess (pps (ppx_base ppxlib.runner)))
-  (flags (:standard -safe-string))
   (libraries (base sexplib re.str))))
 
 
