@@ -34,7 +34,7 @@ let start_state = {
   is_comment = false;
 }
 
-let split = Re_str.regexp "[ \t]+"
+let split = Re.Str.regexp "[ \t]+"
 
 let color_to_code = function
   | Black   -> 30
@@ -48,7 +48,7 @@ let color_to_code = function
   | Default -> 39
 
 let rainbow_open_tag conf tag =
-  let args = Re_str.split split tag in
+  let args = Re.Str.split split tag in
   let color_count = Array.length conf.color_scheme in
   match args with
   | "d"::n::[] ->
@@ -262,13 +262,13 @@ module Normalize = struct
       ))
   ;;
 
-  let block_comment = Re_str.regexp "#|\\(\\([\t ]*\\)\\(\\(\n\\|.\\)*\\)\\)|#"
+  let block_comment = Re.Str.regexp "#|\\(\\([\t ]*\\)\\(\\(\n\\|.\\)*\\)\\)|#"
 
-  let line_split = Re_str.regexp "\n[ \t]*"
+  let line_split = Re.Str.regexp "\n[ \t]*"
 
-  let word_split = Re_str.regexp "[ \n\t]+"
+  let word_split = Re.Str.regexp "[ \n\t]+"
 
-  let trailing = Re_str.regexp "\\(.*\\b\\)[ \t]*$"
+  let trailing = Re.Str.regexp "\\(.*\\b\\)[ \t]*$"
 
   let tab_size = 2
 
@@ -276,15 +276,15 @@ module Normalize = struct
     (* Split along lines or words. *)
     let contents =
       match style with
-      | Pretty_print       -> Re_str.split word_split comment
-      | Conservative_print -> Re_str.split line_split comment
+      | Pretty_print       -> Re.Str.split word_split comment
+      | Conservative_print -> Re.Str.split line_split comment
     in
     (* Remove trailing spaces. *)
     let contents =
       List.map contents
         ~f:(fun line ->
-          if Re_str.string_match trailing line 0
-          then Re_str.matched_group 1 line
+          if Re.Str.string_match trailing line 0
+          then Re.Str.matched_group 1 line
           else line)
     in
     List.filter contents ~f:(fun s -> String.length s > 0)
@@ -319,15 +319,15 @@ module Normalize = struct
       (match conf.comments with
        | Drop -> raise Drop_exn
        | Print (indent,_,style) ->
-         if Re_str.string_match block_comment comment 0
+         if Re.Str.string_match block_comment comment 0
          then
            let ind =
              match indent with
-             | Auto_indent_comment -> get_size (Re_str.matched_group 2 comment) + 2
+             | Auto_indent_comment -> get_size (Re.Str.matched_group 2 comment) + 2
              | Indent_comment i    -> i
            in
            Block_comment
-             (ind,pre_process_block_comment style (Re_str.matched_group 3 comment))
+             (ind,pre_process_block_comment style (Re.Str.matched_group 3 comment))
          else Line_comment comment
       )
     | W.Sexp_comment (_,comment_list,sexp) ->
