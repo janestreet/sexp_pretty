@@ -105,3 +105,21 @@ let%test_unit _ =
   let sexp = Sexp.Atom "   space   " in
   test ~input:sexp sexp
 ;;
+
+let%expect_test "long atoms with newlines are hard to read" =
+  let s = String.concat ~sep:"\n" (List.init 10 ~f:Int.to_string) in
+  print_endline (pretty_string Config.(update default ~color:false) (Atom s));
+  [%expect {| "0\n1\n2\n3\n4\n5\n6\n7\n8\n9" |}];
+  print_endline (Sexp.to_string_hum (Atom s));
+  [%expect {|
+     "0\
+    \n1\
+    \n2\
+    \n3\
+    \n4\
+    \n5\
+    \n6\
+    \n7\
+    \n8\
+    \n9" |}]
+;;
