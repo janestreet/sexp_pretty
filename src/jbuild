@@ -2,7 +2,7 @@
  ((name sexp_pretty)
   (public_name sexp_pretty)
   (preprocess (pps (ppx_base ppxlib.runner)))
-  (libraries (base sexplib re.str))))
+  (libraries (base sexplib re))))
 
 
 (jbuild_version 1)
