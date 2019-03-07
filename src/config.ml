@@ -1,6 +1,6 @@
 open Base
 
-let of_sexp_error = Base.Not_exposed_properly.Sexp_conv.of_sexp_error
+let of_sexp_error = Sexplib.Conv.of_sexp_error
 
 
 type color =
