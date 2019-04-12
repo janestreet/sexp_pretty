@@ -860,7 +860,7 @@ module Print = struct
 end
 
 let setup conf fmt =
-  Format.pp_set_formatter_tag_functions fmt (rainbow_tags conf);
+  Format.pp_set_formatter_tag_functions fmt (rainbow_tags conf) [@ocaml.warning "-3"];
   Format.pp_set_tags fmt true
 
 let run ~next conf fmt =
