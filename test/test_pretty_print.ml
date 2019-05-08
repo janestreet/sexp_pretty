@@ -123,3 +123,23 @@ let%expect_test "long atoms with newlines are hard to read" =
     \n8\
     \n9" |}]
 ;;
+
+let%expect_test "block comments should not have extra escape sequence at the end using pp_formatter'" =
+  let sparser = Sexp.With_layout.Parser.sexp Sexp.With_layout.Lexer.main in
+  let lexbuf = Lexing.from_string "(this is a sexp with #| comment |# block comments)" in
+  let fmt = Format.formatter_of_out_channel stdout in
+  let next () =
+    try Some (sparser lexbuf) with
+    | _ -> None
+  in
+  let config = Sexp_pretty.Config.create ~color:false () in
+  Sexp_pretty.Sexp_with_layout.pp_formatter' ~next config fmt;
+  [%expect {| (this is a sexp with #| comment |# block comments) |}]
+;;
+
+let%expect_test "block comments should not have escape sequence when pretty_string" =
+  let s = "(this is a sexp with #| my delightful comment |# block comments)" in
+  let config = Sexp_pretty.Config.create ~color:false () in
+  print_endline (pretty_string config (Atom s));
+  [%expect {| "(this is a sexp with #| my delightful comment |# block comments)" |} ]
+;;

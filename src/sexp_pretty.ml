@@ -72,7 +72,12 @@ let rainbow_open_tag conf tag =
 
 let rainbow_tags conf =
   { Format.mark_open_tag = rainbow_open_tag conf
-  ; Format.mark_close_tag = (fun _-> "[0m")
+  ; Format.mark_close_tag =
+      (fun _ ->
+         (match conf.comments with
+          | Print (_,Some _clr,_) -> ""
+          | _ -> ""
+         ))
   ; Format.print_open_tag = ignore
   ; Format.print_close_tag = ignore }
 
