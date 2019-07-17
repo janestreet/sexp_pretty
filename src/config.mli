@@ -12,6 +12,7 @@ type color =
 
 (** Datatypes of various thresholds *)
 type atom_threshold = Atom_threshold of int [@@deriving sexp]
+
 type char_threshold = Character_threshold of int [@@deriving sexp]
 
 (** Depth is the depth of an atom. For example, in (a (b (c) d)), the depth of a is 1, the
@@ -22,9 +23,7 @@ type char_threshold = Character_threshold of int [@@deriving sexp]
 type depth_threshold = Depth_threshold of int [@@deriving sexp]
 
 (** Whether or not should closing parentheses be aligned. *)
-type aligned_parens =
-  | Parens_alignment of bool
-[@@deriving sexp]
+type aligned_parens = Parens_alignment of bool [@@deriving sexp]
 
 type data_alignment =
   | Data_not_aligned
@@ -54,7 +53,8 @@ type comment_indent =
 
 type comment_print_style =
   | Pretty_print (** Auto aligns multi-line block comments. *)
-  | Conservative_print (** Leaves block comments as they are, only adjusts indentation. *)
+  | Conservative_print
+  (** Leaves block comments as they are, only adjusts indentation. *)
 [@@deriving sexp]
 
 (** Comment treatment. *)
@@ -64,7 +64,8 @@ type comments =
 [@@deriving sexp]
 
 type atom_printing =
-  | Escaped     (** Can be parsed again. Atoms are printed out as loaded, with escaping. *)
+  | Escaped (** Can be parsed again. Atoms are printed out as loaded, with escaping. *)
+  | Minimal_escaping (** As [Escaped], but applies escaping to fewer characters. *)
   | Interpreted (** Try to interpret atoms as sexps. *)
 [@@deriving sexp]
 
@@ -85,8 +86,8 @@ type atom_printing =
     Character threshold is excluding spaces.
 
 *)
-type singleton_limit =
-  | Singleton_limit of atom_threshold * char_threshold [@@deriving sexp]
+type singleton_limit = Singleton_limit of atom_threshold * char_threshold
+[@@deriving sexp]
 
 (** Should parentheses be colored? *)
 type paren_coloring = bool [@@deriving sexp]
@@ -108,21 +109,29 @@ type parens =
   | New_line
 [@@deriving sexp]
 
-type t = {
-  indent            :int;
-  data_alignment    :data_alignment;
-  color_scheme      :color array;
-  atom_coloring     :atom_coloring;
-  atom_printing     :atom_printing;
-  paren_coloring    :paren_coloring;
-  opening_parens    :parens;
-  closing_parens    :parens;
-  comments          :comments;
-  singleton_limit   :singleton_limit;
-  leading_threshold :atom_threshold * char_threshold;
-  separator         :separator;
-  sticky_comments   :bool
-} [@@deriving sexp]
+(** Where to put line comments relative to an associated sexp. *)
+type sticky_comments =
+  | Before
+  | Same_line
+  | After
+[@@deriving sexp]
+
+type t =
+  { indent : int
+  ; data_alignment : data_alignment
+  ; color_scheme : color array
+  ; atom_coloring : atom_coloring
+  ; atom_printing : atom_printing
+  ; paren_coloring : paren_coloring
+  ; opening_parens : parens
+  ; closing_parens : parens
+  ; comments : comments
+  ; singleton_limit : singleton_limit
+  ; leading_threshold : atom_threshold * char_threshold
+  ; separator : separator
+  ; sticky_comments : sticky_comments
+  }
+[@@deriving sexp]
 
 val default : t
 
