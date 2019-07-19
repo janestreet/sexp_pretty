@@ -249,13 +249,16 @@ module Normalize = struct
            (* Perhaps normalized the atom, but nothing more to do. *)
            | [ W.Sexp (W.Atom (_, _atom_without_spaces, None)) ] -> `Atom atom
            (* Nested atom, try again. *)
-           | [ W.Sexp (W.Atom (_, inner_atom, Some _)) ] ->
-             (match pre_process_atom conf pos inner_atom with
-              | `Atom _ -> `Atom atom
-              (* original atom is better since it contains original
-                 spacing which will be stripped off by
-                 pre_process_atom *)
-              | `List lst -> `List lst)
+           | [ W.Sexp (W.Atom (_, inner_atom, Some source)) ] ->
+             if String.equal inner_atom source
+             then `Atom atom (* avoid an infinite loop of reinterpreting the atom *)
+             else (
+               match pre_process_atom conf pos inner_atom with
+               | `Atom _ -> `Atom atom
+               (* original atom is better since it contains original
+                  spacing which will be stripped off by
+                  pre_process_atom *)
+               | `List lst -> `List lst)
            (* Parsed one whole sexp, bubble it up. *)
            | [ W.Sexp (W.List (_, list, _)) ] -> `List list
            (* It would cause problems if we parsed a comment in the case the atom is a
