@@ -1063,6 +1063,8 @@ let run ~next conf fmt =
   in
   Format.pp_open_vbox fmt 0;
   loop false;
+  if conf.paren_coloring then (* Reset all formatting *)
+    Format.pp_print_string fmt "[0m";
   Format.pp_close_box fmt ();
   Format.pp_print_flush fmt ()
 ;;
