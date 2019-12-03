@@ -14,7 +14,7 @@ depends: [
   "base"
   "ppx_base"
   "sexplib"
-  "dune"     {>= "1.5.1"}
+  "dune"     {>= "2.0.0"}
   "re"       {>= "1.8.0"}
 ]
 synopsis: "S-expression pretty-printer"
