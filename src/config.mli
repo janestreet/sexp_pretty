@@ -55,7 +55,7 @@ type comment_print_style =
   | Pretty_print (** Auto aligns multi-line block comments. *)
   | Conservative_print
   (** Leaves block comments as they are, only adjusts indentation. *)
-[@@deriving sexp]
+[@@deriving enumerate, sexp]
 
 (** Comment treatment. *)
 type comments =

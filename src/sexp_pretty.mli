@@ -1,14 +1,5 @@
 open Base
 
-(** Pretty-printing of S-expressions.
-
-    Warning!  It is not recommended to use this library in critical code, and certainly
-    not in a context where the sexp produced by that module are expected to be parsed
-    again.  There is no guarantee that the code won't raise.  The scrutiny of review is
-    low at the moment and some work would be required to bump it.  Suitable for human
-    readable sexps only.  It was added to the base projection to allow expect tests to
-    more easily generate more readable s-expressions, even when used in contexts that
-    require base-projection only code. *)
 
 module Config : module type of Config
 

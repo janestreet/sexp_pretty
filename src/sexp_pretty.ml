@@ -208,8 +208,16 @@ module Normalize = struct
 
   module Pos = Sexplib.Src_pos.Relative
 
-  let block_comment = Re.Str.regexp "#|\\(\\([\t ]*\\)\\(\\(\n\\|.\\)*\\)\\)|#"
-  let line_split = Re.Str.regexp "\n[ \t]*"
+  let block_comment =
+    Re.(
+      seq
+        [ str "#|"
+        ; group (seq [ group (rep (set "\t ")); rep (alt [ char '\n'; any ]) ])
+        ; str "|#"
+        ]
+      |> compile)
+  ;;
+
   let word_split = Re.Str.regexp "[ \n\t]+"
   let trailing = Re.Str.regexp "\\(.*\\b\\)[ \t]*$"
   let tab_size = 2
@@ -218,7 +226,8 @@ module Normalize = struct
     | Horizontal
     | Vertical
 
-  let is_block_comment comment = Re.Str.string_match block_comment comment 0
+  let match_block_comment comment = Re.exec_opt block_comment comment
+  let is_block_comment comment = Option.is_some (match_block_comment comment)
 
   let grab_comments pos list =
     let rec loop dimension acc pos = function
@@ -319,20 +328,16 @@ module Normalize = struct
   ;;
 
   let pre_process_block_comment style comment =
-    (* Split along lines or words. *)
-    let contents =
-      match style with
-      | Pretty_print -> Re.Str.split word_split comment
-      | Conservative_print -> Re.Str.split line_split comment
-    in
-    (* Remove trailing spaces. *)
-    let contents =
-      List.map contents ~f:(fun line ->
+    match style with
+    | Conservative_print -> String.split comment ~on:'\n'
+    | Pretty_print ->
+      String.strip comment
+      |> Re.Str.split word_split
+      |> List.map ~f:(fun line ->
         if Re.Str.string_match trailing line 0
         then Re.Str.matched_group 1 line
         else line)
-    in
-    List.filter contents ~f:(fun s -> String.length s > 0)
+      |> List.filter ~f:(fun s -> String.length s > 0)
   ;;
 
   let get_size string =
@@ -404,16 +409,16 @@ module Normalize = struct
       (match conf.comments with
        | Drop -> raise Drop_exn
        | Print (indent, _, style) ->
-         if is_block_comment comment
-         then (
-           let ind =
-             match indent with
-             | Auto_indent_comment -> get_size (Re.Str.matched_group 2 comment) + 2
-             | Indent_comment i -> i
-           in
-           Block_comment
-             (ind, pre_process_block_comment style (Re.Str.matched_group 3 comment)))
-         else Line_comment comment)
+         (match match_block_comment comment with
+          | Some group ->
+            let indent =
+              match indent with
+              | Auto_indent_comment -> get_size (Re.Group.get group 2) + 2
+              | Indent_comment i -> i
+            in
+            let text = pre_process_block_comment style (Re.Group.get group 1) in
+            Block_comment (indent, text)
+          | None -> Line_comment comment))
     | W.Sexp_comment (_, comment_list, sexp) ->
       (match conf.comments with
        | Drop -> raise Drop_exn
@@ -951,29 +956,47 @@ module Print = struct
        | Block_comment (indent, comment_list) ->
          (match conf.comments with
           | Drop -> assert false (* Would have dropped the comment at pre-processing. *)
-          | Print (_, Some _, Conservative_print) ->
-            Format.fprintf fmt "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a%a@]@ @]|#@]@}"
-          (* This is an ugly hack not to print anything if colors are disabled. The opening
-             tag works fine, as it checks whether or not anything should be printed. The
-             closing one doesn't (it can't have any arguments, which is bad).
-          *)
-          | Print (_, None, Conservative_print) ->
-            Format.fprintf fmt "@{<c %d}@[<h>@[<hv>@[<hv %d>#|%a%a@]@ @]|#@]"
-          | Print (_, Some _, Pretty_print) ->
-            Format.fprintf fmt "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a@[<hov>%a@]@]@ @]|#@]@}"
-          | Print (_, None, Pretty_print) ->
-            Format.fprintf fmt "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a@[<hov>%a@]@]@ @]|#@]")
-           depth
-           indent
-           (fun fmt spaces -> Format.pp_print_break fmt spaces 0)
-           (if indent > 2 && not (List.is_empty comment_list) then indent - 2 else 0)
-           (fun fmt comment_list ->
-              Format.pp_list
-                "@ "
-                (fun fmt comm -> Format.fprintf fmt "%s" comm)
-                fmt
-                comment_list)
-           comment_list
+          | Print (_, color, Conservative_print) ->
+            let f =
+              match color with
+              | Some _ -> Format.fprintf fmt "@{<c %d>@[<h>#|%a|#@]@}"
+              (* This is an ugly hack not to print anything if colors are disabled. The opening
+                 tag works fine, as it checks whether or not anything should be printed. The
+                 closing one doesn't (it can't have any arguments, which is bad).
+              *)
+              | None -> Format.fprintf fmt "@{<c %d}@[<h>#|%a|#@]"
+            in
+            f
+              depth
+              (fun fmt comment_list ->
+                 Format.pp_list
+                   "@."
+                   (fun fmt comm -> Format.fprintf fmt "%s" comm)
+                   fmt
+                   comment_list)
+              comment_list
+          | Print (_, color, Pretty_print) ->
+            let f =
+              match color with
+              | Some _ ->
+                Format.fprintf
+                  fmt
+                  "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a@[<hov>%a@]@]@ @]|#@]@}"
+              | None ->
+                Format.fprintf fmt "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a@[<hov>%a@]@]@ @]|#@]"
+            in
+            f
+              depth
+              indent
+              (fun fmt spaces -> Format.pp_print_break fmt spaces 0)
+              (if indent > 2 && not (List.is_empty comment_list) then indent - 2 else 0)
+              (fun fmt comment_list ->
+                 Format.pp_list
+                   "@ "
+                   (fun fmt comm -> Format.fprintf fmt "%s" comm)
+                   fmt
+                   comment_list)
+              comment_list)
        | Sexp_comment ((comments, _), sexp) ->
          (match conf.comments with
           | Drop -> assert false
