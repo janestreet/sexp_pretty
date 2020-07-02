@@ -1,4 +1,4 @@
-open Base
+open! Base
 
 let of_sexp_error = Sexplib.Conv.of_sexp_error
 

@@ -1,3 +1,5 @@
+open! Base
+
 type color =
   | Black
   | Red

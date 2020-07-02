@@ -1,6 +1,8 @@
-open Base
-open Config
+open! Base
+include Sexp_pretty_intf
 module Sexp = Sexplib.Sexp
+module Config = Config
+open Config
 
 
 module W = Sexp.With_layout
@@ -25,8 +27,6 @@ module Format = struct
     pp_listi sep ?singleton (fun _ -> pp) fmt list
   ;;
 end
-
-module Config = Config
 
 type state = { is_comment : bool }
 
@@ -1095,25 +1095,6 @@ let rec sexp_to_sexp_or_comment = function
   | Sexp.List list ->
     W.Sexp (W.List (dummy_pos, List.map list ~f:sexp_to_sexp_or_comment, dummy_pos))
 ;;
-
-module type S = sig
-  type sexp
-  type 'a writer = Config.t -> 'a -> sexp -> unit
-
-  val pp_formatter : Format.formatter writer
-
-  val pp_formatter'
-    :  next:(unit -> sexp option)
-    -> Config.t
-    -> Caml.Format.formatter
-    -> unit
-
-  val pp_buffer : Buffer.t writer
-  val pp_out_channel : Caml.out_channel writer
-  val pp_blit : (string, unit) Blit.sub writer
-  val pretty_string : Config.t -> sexp -> string
-  val sexp_to_string : sexp -> string
-end
 
 module Make (M : sig
     type t
