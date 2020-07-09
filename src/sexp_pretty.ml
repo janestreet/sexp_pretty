@@ -31,7 +31,7 @@ end
 type state = { is_comment : bool }
 
 let start_state = { is_comment = false }
-let split = Re.Str.regexp "[ \t]+"
+let split = lazy (Re.Str.regexp "[ \t]+")
 
 let color_to_code = function
   | Black -> 30
@@ -46,7 +46,7 @@ let color_to_code = function
 ;;
 
 let rainbow_open_tag conf tag =
-  let args = Re.Str.split split tag in
+  let args = Re.Str.split (force split) tag in
   let color_count = Array.length conf.color_scheme in
   match args with
   | [ "d"; n ] ->
@@ -209,24 +209,25 @@ module Normalize = struct
   module Pos = Sexplib.Src_pos.Relative
 
   let block_comment =
-    Re.(
-      seq
-        [ str "#|"
-        ; group (seq [ group (rep (set "\t ")); rep (alt [ char '\n'; any ]) ])
-        ; str "|#"
-        ]
-      |> compile)
+    lazy
+      Re.(
+        seq
+          [ str "#|"
+          ; group (seq [ group (rep (set "\t ")); rep (alt [ char '\n'; any ]) ])
+          ; str "|#"
+          ]
+        |> compile)
   ;;
 
-  let word_split = Re.Str.regexp "[ \n\t]+"
-  let trailing = Re.Str.regexp "\\(.*\\b\\)[ \t]*$"
+  let word_split = lazy (Re.Str.regexp "[ \n\t]+")
+  let trailing = lazy (Re.Str.regexp "\\(.*\\b\\)[ \t]*$")
   let tab_size = 2
 
   type match_dimension =
     | Horizontal
     | Vertical
 
-  let match_block_comment comment = Re.exec_opt block_comment comment
+  let match_block_comment comment = Re.exec_opt (force block_comment) comment
   let is_block_comment comment = Option.is_some (match_block_comment comment)
 
   let grab_comments pos list =
@@ -332,9 +333,9 @@ module Normalize = struct
     | Conservative_print -> String.split comment ~on:'\n'
     | Pretty_print ->
       String.strip comment
-      |> Re.Str.split word_split
+      |> Re.Str.split (force word_split)
       |> List.map ~f:(fun line ->
-        if Re.Str.string_match trailing line 0
+        if Re.Str.string_match (force trailing) line 0
         then Re.Str.matched_group 1 line
         else line)
       |> List.filter ~f:(fun s -> String.length s > 0)
