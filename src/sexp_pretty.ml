@@ -635,8 +635,7 @@ module Print = struct
 
   let get_leading_atoms conf (list : Normalize.t list) =
     match conf.leading_threshold with
-    | Atom_threshold leading_atom_threshold, Character_threshold leading_char_threshold
-      ->
+    | Atom_threshold leading_atom_threshold, Character_threshold leading_char_threshold ->
       let rec get_leading_atoms_inner acc ~atom_count ~char_count = function
         | [] -> List.rev acc, []
         | N.Sexp (N.Atom atom, []) :: tl as list ->
@@ -704,9 +703,7 @@ module Print = struct
         | (N.Comment _ as comment) :: tl ->
           try_align_inner (T (preprocess_t comment) :: acc) tl
         | N.Sexp ((N.Atom _ as sexp), associated_comments) :: tl ->
-          try_align_inner
-            (T (Sexp (preprocess_sexp sexp, associated_comments)) :: acc)
-            tl
+          try_align_inner (T (Sexp (preprocess_sexp sexp, associated_comments)) :: acc) tl
         | N.Sexp ((N.List list as sexp), associated_comments) :: tl ->
           let shape = get_shape conf list ~atom_thresh ~char_thresh ~depth_thresh in
           (match shape with
@@ -980,9 +977,7 @@ module Print = struct
             let f =
               match color with
               | Some _ ->
-                Format.fprintf
-                  fmt
-                  "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a@[<hov>%a@]@]@ @]|#@]@}"
+                Format.fprintf fmt "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a@[<hov>%a@]@]@ @]|#@]@}"
               | None ->
                 Format.fprintf fmt "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a@[<hov>%a@]@]@ @]|#@]"
             in
@@ -1054,7 +1049,7 @@ module Print = struct
 end
 
 let setup conf fmt =
-  (Format.pp_set_formatter_tag_functions fmt (rainbow_tags conf) [@ocaml.warning "-3"]);
+  Format.pp_set_formatter_tag_functions fmt (rainbow_tags conf) [@ocaml.warning "-3"];
   Format.pp_set_tags fmt true
 ;;
 

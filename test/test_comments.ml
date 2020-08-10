@@ -83,9 +83,7 @@ let%expect_test "leading and trailing whitespace" =
   end
   in
   let ascii_table columns rows =
-    let screen =
-      Ascii_table_kernel.draw columns rows |> Option.value_exn ~here:[%here]
-    in
+    let screen = Ascii_table_kernel.draw columns rows |> Option.value_exn ~here:[%here] in
     Ascii_table_kernel.Screen.to_string
       screen
       ~bars:`Unicode
