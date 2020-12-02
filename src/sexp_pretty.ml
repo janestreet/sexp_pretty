@@ -28,9 +28,17 @@ module Format = struct
   ;;
 end
 
-type state = { is_comment : bool }
+type comment_kind =
+  | Sexp_comment
+  | Line_comment
 
-let start_state = { is_comment = false }
+type content_kind =
+  | Sexp
+  | Comment of comment_kind
+
+type state = { content_kind : content_kind }
+
+let start_state = { content_kind = Sexp }
 let split = lazy (Re.Str.regexp "[ \t]+")
 
 let color_to_code = function
@@ -81,13 +89,13 @@ let rainbow_tags conf =
 
 (* Opens n parentheses, starting at level depth. *)
 let open_parens conf state ~depth fmt n =
-  match conf.paren_coloring, state.is_comment, conf.comments with
+  match conf.paren_coloring, state.content_kind, conf.comments with
   (* Overrides the option not to color parentheses. *)
-  | _, true, Print (_, Some _, _) ->
+  | _, Comment _, Print (_, Some _, _) ->
     for i = depth to depth + n - 1 do
       Format.fprintf fmt "@{<c %d>(@}" i
     done
-  | true, false, _ ->
+  | true, Sexp, _ ->
     for i = depth to depth + n - 1 do
       Format.fprintf fmt "@{<d %d>(@}" i
     done
@@ -100,12 +108,12 @@ let open_parens conf state ~depth fmt n =
 (* Closes n parentheses, starting at level depth+(n-1) to depth. *)
 let close_parens conf state ~depth fmt n =
   (* Overrides the option not to color parentheses. *)
-  match conf.paren_coloring, state.is_comment, conf.comments with
-  | _, true, Print (_, Some _, _) ->
+  match conf.paren_coloring, state.content_kind, conf.comments with
+  | _, Comment _, Print (_, Some _, _) ->
     for i = depth + (n - 1) downto depth do
       Format.fprintf fmt "@{<c %d>)@}" i
     done
-  | true, false, _ ->
+  | true, Sexp, _ ->
     for i = depth + (n - 1) downto depth do
       Format.fprintf fmt "@{<d %d>)@}" i
     done
@@ -153,14 +161,17 @@ let atom_printing_len_exn conf at =
 
 let pp_atom conf state ~depth ~len index fmt at =
   let at =
-    if state.is_comment
-    then at
-    else if must_escape at
-    then (
-      match conf.atom_printing with
-      | Escaped | Interpreted -> Sexplib.Pre_sexp.esc_str at
-      | Minimal_escaping -> minimal_escaping at)
-    else at
+    match state.content_kind with
+    | Comment Line_comment ->
+      (* we never need to escape a line comment *)
+      at
+    | Sexp | Comment Sexp_comment ->
+      if must_escape at
+      then (
+        match conf.atom_printing with
+        | Escaped | Interpreted -> Sexplib.Pre_sexp.esc_str at
+        | Minimal_escaping -> minimal_escaping at)
+      else at
   in
   let should_be_colored =
     match conf.atom_coloring with
@@ -168,15 +179,16 @@ let pp_atom conf state ~depth ~len index fmt at =
     | Color_first threshold -> Int.equal index 0 && len <= threshold
     | Color_all -> true
   in
-  if state.is_comment
-  then (
-    match conf.comments with
-    | Drop -> assert false
-    | Print (_, Some _, _) -> Format.fprintf fmt "@{<c %d>%s@}" depth at
-    | Print (_, None, _) -> Format.fprintf fmt "%s" at)
-  else if should_be_colored
-  then Format.fprintf fmt "@{<d %d>%s@}" depth at
-  else Format.fprintf fmt "%s" at
+  match state.content_kind with
+  | Comment _ ->
+    (match conf.comments with
+     | Drop -> assert false
+     | Print (_, Some _, _) -> Format.fprintf fmt "@{<c %d>%s@}" depth at
+     | Print (_, None, _) -> Format.fprintf fmt "%s" at)
+  | Sexp ->
+    if should_be_colored
+    then Format.fprintf fmt "@{<d %d>%s@}" depth at
+    else Format.fprintf fmt "%s" at
 ;;
 
 let pp_associated_comments conf ~depth fmt associated_comments =
@@ -186,7 +198,7 @@ let pp_associated_comments conf ~depth fmt associated_comments =
     Format.pp_open_vbox fmt 0;
     List.iteri associated_comments ~f:(fun i comment ->
       if i > 0 then Format.pp_print_break fmt 0 0;
-      pp_atom conf { is_comment = true } ~depth ~len:1 0 fmt comment);
+      pp_atom conf { content_kind = Comment Line_comment } ~depth ~len:1 0 fmt comment);
     Format.pp_close_box fmt ())
 ;;
 
@@ -950,7 +962,14 @@ module Print = struct
       ();
       (match comment with
        | Line_comment comment ->
-         pp_atom conf { is_comment = true } ~depth ~len:1 index fmt comment
+         pp_atom
+           conf
+           { content_kind = Comment Line_comment }
+           ~depth
+           ~len:1
+           index
+           fmt
+           comment
        | Block_comment (indent, comment_list) ->
          (match conf.comments with
           | Drop -> assert false (* Would have dropped the comment at pre-processing. *)
@@ -1001,7 +1020,14 @@ module Print = struct
          List.iteri comments ~f:(fun i comm ->
            pp_comment conf state depth ~index:i fmt comm);
          if not (List.is_empty comments) then Format.pp_print_space fmt ();
-         pp_sexp conf { is_comment = true } ~opened:Closed depth ~index fmt sexp)
+         pp_sexp
+           conf
+           { content_kind = Comment Sexp_comment }
+           ~opened:Closed
+           depth
+           ~index
+           fmt
+           sexp)
 
   and pp_aligned conf state depth fmt shape associated_comments align_list =
     let parens_aligned =
