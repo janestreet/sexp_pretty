@@ -75,7 +75,8 @@ let%expect_test "leading and trailing whitespace" =
 
     let columns =
       Ascii_table_kernel.Column.create "comment" to_string
-      :: List.map [%all: Comment_print_style.t] ~f:(fun style ->
+      ::
+      List.map [%all: Comment_print_style.t] ~f:(fun style ->
         Ascii_table_kernel.Column.create
           (Comment_print_style.to_string style)
           (to_string_pretty ~style))
@@ -83,7 +84,10 @@ let%expect_test "leading and trailing whitespace" =
   end
   in
   let ascii_table columns rows =
-    let screen = Ascii_table_kernel.draw columns rows |> Option.value_exn ~here:[%here] in
+    let screen =
+      Ascii_table_kernel.draw columns rows ~prefer_split_on_spaces:false
+      |> Option.value_exn ~here:[%here]
+    in
     Ascii_table_kernel.Screen.to_string
       screen
       ~bars:`Unicode
@@ -230,7 +234,8 @@ module Test_helper = struct
     (module struct
       type t = M.t [@@deriving sexp_of]
 
-      include Quickcheckable.Of_quickcheckable_filtered
+      include
+        Quickcheckable.Of_quickcheckable_filtered
           (M)
           (struct
             type t = M.t
