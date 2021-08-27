@@ -25,6 +25,7 @@ module type S = sig
   val sexp_to_string : sexp -> string
 end
 
+(** Pretty-printing of S-expressions *)
 module type Sexp_pretty = sig
   module Config = Config
 

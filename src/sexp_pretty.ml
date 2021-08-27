@@ -247,11 +247,10 @@ module Normalize = struct
       | [] -> acc, []
       | W.Sexp _ :: _ as list -> acc, list
       | (W.Comment (W.Plain_comment (cpos, content)) as comment) :: rest ->
-        if
-          (match dimension with
-           | Horizontal -> pos.Pos.row = cpos.Pos.row
-           | Vertical -> pos.Pos.col = cpos.Pos.col)
-          && not (is_block_comment content)
+        if (match dimension with
+          | Horizontal -> pos.Pos.row = cpos.Pos.row
+          | Vertical -> pos.Pos.col = cpos.Pos.col)
+        && not (is_block_comment content)
         then loop Vertical (content :: acc) cpos rest
         else acc, comment :: rest
       | W.Comment (W.Sexp_comment _) :: _ as list -> acc, list
@@ -656,9 +655,8 @@ module Print = struct
            | true -> List.rev acc, list
            | false ->
              let char_count = char_count + String.length atom in
-             if
-               atom_count = leading_atom_threshold || char_count > leading_char_threshold
-               (* Breached the threshold for number of leading atoms. *)
+             if atom_count = leading_atom_threshold || char_count > leading_char_threshold
+             (* Breached the threshold for number of leading atoms. *)
              then raise Too_many_atoms
              else
                get_leading_atoms_inner
@@ -727,10 +725,9 @@ module Print = struct
                tl
            | Some shape ->
              let shape, aligned, rest = find_alignable conf shape tl ~char_thresh in
-             if
-               List.exists aligned ~f:(function
-                 | Atom_line _ -> true
-                 | _ -> false)
+             if List.exists aligned ~f:(function
+               | Atom_line _ -> true
+               | _ -> false)
              then
                try_align_inner
                  (Aligned ((shape, associated_comments), aligned) :: acc)
