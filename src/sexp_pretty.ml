@@ -396,26 +396,27 @@ module Normalize = struct
     | Print _ ->
       (* Re-orders comments to have comment that belong to a sexp before it, not after. If
          [conf.sticky_comments = Same_line], it ties the comments to the sexp instead *)
-      let rec reorder = function
-        | [] -> []
+      let rec reorder acc = function
+        | [] -> acc
         | W.Sexp (W.Atom (pos, atom, quoted) as sexp) :: rest ->
-          reorder_comments (atom_end_position ~pos ~atom ~quoted) sexp rest
-        | W.Sexp (W.List (_, _, pos) as sexp) :: rest -> reorder_comments pos sexp rest
-        | W.Comment comment :: rest -> Comment (of_comment conf comment) :: reorder rest
-      and reorder_comments pos sexp rest =
+          reorder_comments acc (atom_end_position ~pos ~atom ~quoted) sexp rest
+        | W.Sexp (W.List (_, _, pos) as sexp) :: rest ->
+          reorder_comments acc pos sexp rest
+        | W.Comment comment :: rest ->
+          reorder (Comment (of_comment conf comment) :: acc) rest
+      and reorder_comments acc pos sexp rest =
         let comments, rest = grab_comments pos rest in
+        let sexp = of_sexp conf sexp in
+        let with_comments init =
+          List.fold comments ~init ~f:(fun acc comment ->
+            Comment (Line_comment comment) :: acc)
+        in
         match conf.sticky_comments with
-        | Same_line -> Sexp (of_sexp conf sexp, comments) :: reorder rest
-        | Before ->
-          List.map comments ~f:(fun comment -> Comment (Line_comment comment))
-          @ [ Sexp (of_sexp conf sexp, []) ]
-          @ reorder rest
-        | After ->
-          [ Sexp (of_sexp conf sexp, []) ]
-          @ List.map comments ~f:(fun comment -> Comment (Line_comment comment))
-          @ reorder rest
+        | Same_line -> reorder (Sexp (sexp, comments) :: acc) rest
+        | Before -> reorder (Sexp (sexp, []) :: with_comments acc) rest
+        | After -> reorder (with_comments (Sexp (sexp, []) :: acc)) rest
       in
-      List (reorder list)
+      List (reorder [] list |> List.rev)
 
   and of_comment (conf : Config.t) : W.comment -> comment = function
     | W.Plain_comment (_, comment) ->
@@ -772,7 +773,7 @@ module Print = struct
           close_parens conf state ~depth:(depth + 1) fmt 1;
           trailing_spaces)
     in
-    ignore (set_up_markers ~depth ~index:0 shape)
+    ignore (set_up_markers ~depth ~index:0 shape : int)
   ;;
 
   (* The closing paren goes on a new line, or the last element forces a breakline. *)

@@ -174,6 +174,124 @@ newline" |# |};
   ignore ()
 ;;
 
+let%expect_test "sticky comments" =
+  let test s =
+    let t = of_string s in
+    Config.[ Before; After; Same_line ]
+    |> List.iter ~f:(fun sticky ->
+      let label = [%sexp_of: Config.sticky_comments] sticky |> Sexp.to_string in
+      print_endline [%string {|%{label}:|}];
+      List.iter [%all: Comment_print_style.t] ~f:(fun comment_print_style ->
+        let s =
+          let config = get_config ~comment_print_style in
+          let config = { config with Config.sticky_comments = sticky } in
+          List.map t ~f:(Sexp_with_layout.pretty_string config)
+          |> String.concat ~sep:" "
+        in
+        print_endline [%string "%{comment_print_style#Comment_print_style}:\n%{s}"]))
+  in
+  test
+    {|
+ (a
+    ;; comment 1
+    ;; comment 2
+
+    (b c) ;; comment 3
+    ( ;; comment 4
+      d ;; comment 5
+
+    #| multi line
+    block
+    comment
+    |#
+    ()
+    ))
+|};
+  [%expect
+    {|
+    Before:
+    Pretty_print:
+    (a
+      ;; comment 1
+      ;; comment 2
+      ;; comment 3
+      (b c)
+      (;; comment 4
+       ;; comment 5
+       d
+       #| multi line block comment |#
+       ()))
+
+    Conservative_print:
+    (a
+      ;; comment 1
+      ;; comment 2
+      ;; comment 3
+      (b c)
+      (;; comment 4
+       ;; comment 5
+       d
+       #| multi line
+        block
+        comment
+        |#
+    ()))
+
+    After:
+    Pretty_print:
+    (a
+      ;; comment 1
+      ;; comment 2
+      (b c)
+      ;; comment 3
+      (;; comment 4
+       d
+       ;; comment 5
+       #| multi line block comment |#
+       ()))
+
+    Conservative_print:
+    (a
+      ;; comment 1
+      ;; comment 2
+      (b c)
+      ;; comment 3
+      (;; comment 4
+       d
+       ;; comment 5
+       #| multi line
+        block
+        comment
+        |#
+    ()))
+
+    Same_line:
+    Pretty_print:
+    (a
+      ;; comment 1
+      ;; comment 2
+      (b c) ;; comment 3
+      (;; comment 4
+       d ;; comment 5
+       #| multi line block comment |#
+       ()))
+
+    Conservative_print:
+    (a
+      ;; comment 1
+      ;; comment 2
+      (b c) ;; comment 3
+      (;; comment 4
+       d ;; comment 5
+       #| multi line
+        block
+        comment
+        |#
+    ()))
+      |}];
+  ignore ()
+;;
+
 let round_trip_pretty style tc = of_string (pretty_string style tc)
 
 let get_comment_strings t =
