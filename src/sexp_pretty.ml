@@ -10,21 +10,16 @@ module W = Sexp.With_layout
 module Format = struct
   include Caml.Format
 
-  let pp_listi sep ?(offset = 0) ?singleton pp fmt list =
-    match list with
-    | [] -> ()
-    | hd :: tl ->
-      (match singleton, tl with
-       | Some pp, [] -> pp offset fmt hd
-       | _ -> pp offset fmt hd);
-      List.iteri tl ~f:(fun i el ->
-        Caml.Format.fprintf fmt sep;
-        pp (i + offset + 1) fmt el)
+  let pp_arrayi sep pp fmt array =
+    Array.iteri array ~f:(fun i x ->
+      if i > 0 then fprintf fmt sep;
+      pp i fmt x)
   ;;
 
-  let pp_list sep ?singleton pp fmt list =
-    let singleton = Option.map singleton ~f:(fun singleton _ -> singleton) in
-    pp_listi sep ?singleton (fun _ -> pp) fmt list
+  let pp_list sep pp fmt list =
+    List.iteri list ~f:(fun i x ->
+      if i > 0 then fprintf fmt sep;
+      pp fmt x)
   ;;
 end
 
@@ -476,15 +471,15 @@ module Print = struct
   and sexp =
     | Atom of string
     (* With leading atoms. *)
-    | List of string list * t_or_aligned list * forces_breakline
+    | List of string array * t_or_aligned array * forces_breakline
     (* Sexp is a tree - List, Aligned, or Singleton *)
-    | Singleton of string list * int * sexp * forces_breakline
+    | Singleton of string array * int * sexp * forces_breakline
 
   and t_or_aligned =
     | Aligned of aligned
     | T of t
 
-  and aligned = (shape * associated_comments) * line list
+  and aligned = (shape * associated_comments) * line array
 
   and line =
     | Atom_line of string tree * associated_comments
@@ -517,7 +512,7 @@ module Print = struct
               ~char_count
         | [ N.Sexp ((N.List _ as list), []) ] ->
           let level, list = unwrap list in
-          Some (List.rev acc, level, list)
+          Some (Array.of_list_rev acc, level, list)
         | N.Comment _ :: _ -> None
         | _ -> None
       in
@@ -630,16 +625,16 @@ module Print = struct
 
   let find_alignable conf shape ~char_thresh list =
     let rec find_alignable shape res_acc = function
-      | [] -> shape, List.rev res_acc, []
+      | [] -> shape, Array.of_list_rev res_acc, []
       | hd :: tl ->
         (match try_check_shape conf shape hd with
-         | None -> shape, List.rev res_acc, hd :: tl
+         | None -> shape, Array.of_list_rev res_acc, hd :: tl
          | Some (new_shape, res) ->
            if shape_size new_shape <= char_thresh
            then
              find_alignable new_shape (res :: res_acc) tl
              (* Breached the number of characters threshold. *)
-           else shape, List.rev res_acc, hd :: tl)
+           else shape, Array.of_list_rev res_acc, hd :: tl)
     in
     find_alignable shape [] list
   ;;
@@ -650,10 +645,10 @@ module Print = struct
     match conf.leading_threshold with
     | Atom_threshold leading_atom_threshold, Character_threshold leading_char_threshold ->
       let rec get_leading_atoms_inner acc ~atom_count ~char_count = function
-        | [] -> List.rev acc, []
+        | [] -> Array.of_list_rev acc, []
         | N.Sexp (N.Atom atom, []) :: tl as list ->
           (match forces_breakline_atom ~conf atom with
-           | true -> List.rev acc, list
+           | true -> Array.of_list_rev acc, list
            | false ->
              let char_count = char_count + String.length atom in
              if atom_count = leading_atom_threshold || char_count > leading_char_threshold
@@ -665,10 +660,10 @@ module Print = struct
                  tl
                  ~atom_count:(atom_count + 1)
                  ~char_count)
-        | list -> List.rev acc, list
+        | list -> Array.of_list_rev acc, list
       in
       (try get_leading_atoms_inner [] ~atom_count:0 ~char_count:0 list with
-       | Too_many_atoms -> [], list)
+       | Too_many_atoms -> [||], list)
   ;;
 
   let preprocess conf (t : Normalize.t) : t =
@@ -687,7 +682,8 @@ module Print = struct
            let leading_atoms, rest = get_leading_atoms conf list in
            let aligned_or_t =
              match conf.data_alignment with
-             | Data_not_aligned -> List.map rest ~f:(fun el -> T (preprocess_t el))
+             | Data_not_aligned ->
+               Array.of_list_map rest ~f:(fun el -> T (preprocess_t el))
              | Data_aligned
                  ( _
                  , Atom_threshold atom_thresh
@@ -698,7 +694,7 @@ module Print = struct
            List
              ( leading_atoms
              , aligned_or_t
-             , List.exists aligned_or_t ~f:(forces_breakline_aligned_or_t ~conf) ))
+             , Array.exists aligned_or_t ~f:(forces_breakline_aligned_or_t ~conf) ))
     and preprocess_comment = function
       | N.Line_comment comment -> Line_comment comment
       | N.Block_comment (i, comment) -> Block_comment (i, comment)
@@ -711,8 +707,8 @@ module Print = struct
         Sexp_comment ((proc_comment_list, comm_force), proc_sexp)
     and try_align ~atom_thresh ~char_thresh ~depth_thresh list =
       let rec try_align_inner acc = function
-        | [] -> List.rev acc
-        | [ last ] -> List.rev (T (preprocess_t last) :: acc)
+        | [] -> Array.of_list_rev acc
+        | [ last ] -> Array.of_list_rev (T (preprocess_t last) :: acc)
         | (N.Comment _ as comment) :: tl ->
           try_align_inner (T (preprocess_t comment) :: acc) tl
         | N.Sexp ((N.Atom _ as sexp), associated_comments) :: tl ->
@@ -726,7 +722,7 @@ module Print = struct
                tl
            | Some shape ->
              let shape, aligned, rest = find_alignable conf shape tl ~char_thresh in
-             if List.exists aligned ~f:(function
+             if Array.exists aligned ~f:(function
                | Atom_line _ -> true
                | _ -> false)
              then
@@ -783,15 +779,16 @@ module Print = struct
     | Same_line ->
       (match sexp with
        | List (_, list, true) ->
-         (match List.last list with
-          | Some (Aligned (_, line_list)) ->
+         (not (Array.is_empty list))
+         &&
+         (match Array.last list with
+          | Aligned (_, line_list) ->
             (* Would not create an [Aligned] with an empty [line_list] *)
-            (match List.last_exn line_list with
+            (match Array.last line_list with
              | Comment_line (Line_comment _) | Atom_line (_, _ :: _) -> true
              | Comment_line (Block_comment _ | Sexp_comment _) | Atom_line (_, []) -> false)
-          | Some (T (Comment (Line_comment _) | Sexp (_, _ :: _))) -> true
-          | Some (T (Comment (Block_comment _ | Sexp_comment _) | Sexp (_, []))) | None ->
-            false)
+          | T (Comment (Line_comment _) | Sexp (_, _ :: _)) -> true
+          | T (Comment (Block_comment _ | Sexp_comment _) | Sexp (_, [])) -> false)
        | List (_, _, false) | Atom _ | Singleton _ -> false)
   ;;
 
@@ -808,11 +805,11 @@ module Print = struct
         Format.fprintf
           fmt
           "@[<hv>%a@]"
-          (Format.pp_listi "@ " (pp_atom conf state ~depth:(depth + 1) ~len))
+          (Format.pp_arrayi "@ " (pp_atom conf state ~depth:(depth + 1) ~len))
           leading
       in
       let print_rest off fmt rest =
-        Format.pp_listi
+        Format.pp_arrayi
           "@ "
           (fun i fmt el ->
              pp_t_or_aligned
@@ -820,24 +817,24 @@ module Print = struct
                state
                (depth + 1)
                ~index:(i + off)
-               ~len:(List.length rest)
+               ~len:(Array.length rest)
                fmt
                el)
           fmt
           rest
       in
       let print_opened fmt leading rest =
-        let leading_len = List.length leading in
+        let leading_len = Array.length leading in
         let leading_is_not_empty = leading_len > 0 in
-        let rest_is_not_empty = not (List.is_empty rest) in
+        let rest_is_not_empty = not (Array.is_empty rest) in
         if leading_is_not_empty then print_leading leading_len fmt leading;
         if leading_is_not_empty && rest_is_not_empty then Format.pp_print_space fmt ();
         if rest_is_not_empty then print_rest leading_len fmt rest
       in
       let print_closed print leading rest =
-        let leading_len = List.length leading in
+        let leading_len = Array.length leading in
         let leading_not_empty = leading_len > 0 in
-        let rest_not_empty = not (List.is_empty rest) in
+        let rest_not_empty = not (Array.is_empty rest) in
         let same_line_rest =
           match conf.opening_parens with
           | New_line -> false
@@ -863,7 +860,7 @@ module Print = struct
           ()
       in
       (match leading, list, forces_breakline, opened, newline_at_end conf sexp_list with
-       | [], [], _, Closed, _ ->
+       | [||], [||], _, Closed, _ ->
          open_parens conf state ~depth:(depth + 1) fmt 1;
          close_parens conf state ~depth:(depth + 1) fmt 1
        | leading, rest, false, Opened, _ ->
@@ -891,9 +888,9 @@ module Print = struct
       let print_opened printer atoms =
         printer
           conf.indent
-          (Format.pp_listi
+          (Format.pp_arrayi
              "@ "
-             (pp_atom conf state ~depth:(depth + 1) ~len:(List.length atoms)))
+             (pp_atom conf state ~depth:(depth + 1) ~len:(Array.length atoms)))
           atoms
           (open_parens conf state ~depth:(depth + 2))
           d
@@ -908,11 +905,11 @@ module Print = struct
           (open_parens conf state ~depth:(depth + 1))
           1
           (fun fmt -> function
-             | [] -> ()
+             | [||] -> ()
              | atoms ->
-               Format.pp_listi
+               Format.pp_arrayi
                  "@ "
-                 (pp_atom conf state ~depth:(depth + 1) ~len:(List.length atoms))
+                 (pp_atom conf state ~depth:(depth + 1) ~len:(Array.length atoms))
                  fmt
                  atoms;
                Format.pp_print_space fmt ())
@@ -925,7 +922,7 @@ module Print = struct
           (d + 1)
       in
       (match atoms, forces_breakline, opened, newline_at_end conf sexp with
-       | [], _, Opened, _ -> assert false
+       | [||], _, Opened, _ -> assert false
        | atoms, true, Closed, true ->
          print_closed (Format.fprintf fmt "@[<v %d>@[<h>%a%a%a@]@,%a@]@,%a") atoms
        | atoms, true, Closed, false ->
@@ -1007,11 +1004,7 @@ module Print = struct
               (fun fmt spaces -> Format.pp_print_break fmt spaces 0)
               (if indent > 2 && not (List.is_empty comment_list) then indent - 2 else 0)
               (fun fmt comment_list ->
-                 Format.pp_list
-                   "@ "
-                   (fun fmt comm -> Format.fprintf fmt "%s" comm)
-                   fmt
-                   comment_list)
+                 Format.pp_list "@ " Format.pp_print_string fmt comment_list)
               comment_list)
        | Sexp_comment ((comments, _), sexp) ->
          (match conf.comments with
@@ -1060,7 +1053,7 @@ module Print = struct
     Format.pp_open_tbox fmt ();
     set_up_tabulation conf state parens_aligned shape depth fmt;
     pp_associated_comments conf ~depth fmt associated_comments;
-    List.iteri align_list ~f:print_aligned_or_comment;
+    Array.iteri align_list ~f:print_aligned_or_comment;
     Format.pp_close_tbox fmt ()
   ;;
 
