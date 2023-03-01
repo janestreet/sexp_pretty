@@ -367,9 +367,12 @@ end
 (* [Sexp_pretty] doesn't promise to round-trip. Let's limit ourselves to inputs
    that round-tripped up to the number of comments. *)
 let round_trippable_sexps style =
-  let equal_num_comments =
-    Comparable.lift [%compare.equal: int] ~f:(fun list ->
-      get_comment_strings list |> List.length)
+  let equal_num_comments a b =
+    Comparable.lift
+      [%compare.equal: int]
+      ~f:(fun list -> get_comment_strings list |> List.length)
+      a
+      b
   in
   Test_helper.filter_map
     (module Sexp_string_quickcheck.Sexp_string)
@@ -382,9 +385,12 @@ let round_trippable_sexps style =
 ;;
 
 let test_one style =
-  let equal =
-    Comparable.lift [%equal: string list] ~f:(fun list ->
-      get_comment_strings list |> List.map ~f:(postprocess_comment style))
+  let equal a b =
+    Comparable.lift
+      [%equal: string list]
+      ~f:(fun list -> get_comment_strings list |> List.map ~f:(postprocess_comment style))
+      a
+      b
   in
   stage (fun s ->
     let prev = of_string s in

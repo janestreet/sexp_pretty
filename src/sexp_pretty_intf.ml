@@ -6,16 +6,16 @@ module type S = sig
 
   (** [pp_formatter conf fmt sexp] will mutate the fmt with functions such as
       [set_formatter_tag_functions] *)
-  val pp_formatter : Caml.Format.formatter writer
+  val pp_formatter : Stdlib.Format.formatter writer
 
   val pp_formatter'
     :  next:(unit -> sexp option)
     -> Config.t
-    -> Caml.Format.formatter
+    -> Stdlib.Format.formatter
     -> unit
 
   val pp_buffer : Buffer.t writer
-  val pp_out_channel : Caml.out_channel writer
+  val pp_out_channel : Stdlib.out_channel writer
   val pp_blit : (string, unit) Blit.sub writer
 
   (** [pretty_string] needs to allocate. If you care about performance, using one of the

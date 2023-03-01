@@ -8,7 +8,7 @@ open Config
 module W = Sexp.With_layout
 
 module Format = struct
-  include Caml.Format
+  include Stdlib.Format
 
   let pp_arrayi sep pp fmt array =
     Array.iteri array ~f:(fun i x ->
