@@ -45,6 +45,14 @@ let color_to_code = function
   | Magenta -> 35
   | Cyan -> 36
   | White -> 37
+  | BrightBlack -> 90
+  | BrightRed -> 91
+  | BrightGreen -> 92
+  | BrightYellow -> 93
+  | BrightBlue -> 94
+  | BrightMagenta -> 95
+  | BrightCyan -> 96
+  | BrightWhite -> 97
   | Default -> 39
 ;;
 
@@ -324,9 +332,7 @@ module Normalize = struct
                    let escaped_atom_contents =
                      Sexplib.Pre_sexp.mach_maybe_esc_str atom_contents
                    in
-                   [ W.Sexp
-                       (W.Atom (pos, atom_contents, Some escaped_atom_contents))
-                   ]
+                   [ W.Sexp (W.Atom (pos, atom_contents, Some escaped_atom_contents)) ]
                  | W.Sexp (W.List _) :: _ as lists -> lists
                  | W.Comment _ :: _ as comments -> comments
                  | [] -> [] (* cant really happen *))
@@ -786,7 +792,8 @@ module Print = struct
             (* Would not create an [Aligned] with an empty [line_list] *)
             (match Array.last line_list with
              | Comment_line (Line_comment _) | Atom_line (_, _ :: _) -> true
-             | Comment_line (Block_comment _ | Sexp_comment _) | Atom_line (_, []) -> false)
+             | Comment_line (Block_comment _ | Sexp_comment _) | Atom_line (_, []) ->
+               false)
           | T (Comment (Line_comment _) | Sexp (_, _ :: _)) -> true
           | T (Comment (Block_comment _ | Sexp_comment _) | Sexp (_, [])) -> false)
        | List (_, _, false) | Atom _ | Singleton _ -> false)
@@ -994,7 +1001,9 @@ module Print = struct
             let f =
               match color with
               | Some _ ->
-                Format.fprintf fmt "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a@[<hov>%a@]@]@ @]|#@]@}"
+                Format.fprintf
+                  fmt
+                  "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a@[<hov>%a@]@]@ @]|#@]@}"
               | None ->
                 Format.fprintf fmt "@{<c %d>@[<h>@[<hv>@[<hv %d>#|%a@[<hov>%a@]@]@ @]|#@]"
             in

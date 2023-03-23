@@ -9,6 +9,14 @@ type color =
   | Magenta
   | Cyan
   | White
+  | BrightBlack
+  | BrightRed
+  | BrightGreen
+  | BrightYellow
+  | BrightBlue
+  | BrightMagenta
+  | BrightCyan
+  | BrightWhite
   | Default
 [@@deriving sexp]
 
