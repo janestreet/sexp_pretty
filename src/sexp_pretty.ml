@@ -3,8 +3,6 @@ include Sexp_pretty_intf
 module Sexp = Sexplib.Sexp
 module Config = Config
 open Config
-
-
 module W = Sexp.With_layout
 
 module Format = struct
@@ -80,13 +78,13 @@ let rainbow_open_tag conf tag =
 let rainbow_tags conf =
   { Format.mark_open_stag =
       (function
-        | Format.String_tag tag -> rainbow_open_tag conf tag
-        | _ -> "")
+       | Format.String_tag tag -> rainbow_open_tag conf tag
+       | _ -> "")
   ; Format.mark_close_stag =
       (fun _ ->
-         match conf.comments with
-         | Print (_, Some _clr, _) -> ""
-         | _ -> "")
+        match conf.comments with
+        | Print (_, Some _clr, _) -> ""
+        | _ -> "")
   ; Format.print_open_stag = ignore
   ; Format.print_close_stag = ignore
   }
@@ -253,9 +251,9 @@ module Normalize = struct
       | W.Sexp _ :: _ as list -> acc, list
       | (W.Comment (W.Plain_comment (cpos, content)) as comment) :: rest ->
         if (match dimension with
-          | Horizontal -> pos.Pos.row = cpos.Pos.row
-          | Vertical -> pos.Pos.col = cpos.Pos.col)
-        && not (is_block_comment content)
+            | Horizontal -> pos.Pos.row = cpos.Pos.row
+            | Vertical -> pos.Pos.col = cpos.Pos.col)
+           && not (is_block_comment content)
         then loop Vertical (content :: acc) cpos rest
         else acc, comment :: rest
       | W.Comment (W.Sexp_comment _) :: _ as list -> acc, list
@@ -304,8 +302,8 @@ module Normalize = struct
            *)
            | sexps
              when List.for_all sexps ~f:(function
-               | W.Sexp (W.Atom _) -> true
-               | _ -> false) -> (* we parsed a plain string *) `Atom atom
+                    | W.Sexp (W.Atom _) -> true
+                    | _ -> false) -> (* we parsed a plain string *) `Atom atom
            | sexps ->
              (* If atom was created by failwiths or structural_sexp, it would looks like
                 this:
@@ -321,23 +319,23 @@ module Normalize = struct
              let concatenate_atoms lst =
                List.group ~break lst
                |> List.map ~f:(function
-                 | W.Sexp (W.Atom (pos, _, _)) :: _ as atoms ->
-                   let get_atom_contents = function
-                     | W.Sexp (W.Atom (_, a, _)) -> a
-                     | _ -> assert false
-                     (* List.group guarantees that we have only Atoms
+                    | W.Sexp (W.Atom (pos, _, _)) :: _ as atoms ->
+                      let get_atom_contents = function
+                        | W.Sexp (W.Atom (_, a, _)) -> a
+                        | _ -> assert false
+                        (* List.group guarantees that we have only Atoms
                         here *)
-                   in
-                   let atom_contents =
-                     List.map ~f:get_atom_contents atoms |> String.concat ~sep:" "
-                   in
-                   let escaped_atom_contents =
-                     Sexplib.Pre_sexp.mach_maybe_esc_str atom_contents
-                   in
-                   [ W.Sexp (W.Atom (pos, atom_contents, Some escaped_atom_contents)) ]
-                 | W.Sexp (W.List _) :: _ as lists -> lists
-                 | W.Comment _ :: _ as comments -> comments
-                 | [] -> [] (* cant really happen *))
+                      in
+                      let atom_contents =
+                        List.map ~f:get_atom_contents atoms |> String.concat ~sep:" "
+                      in
+                      let escaped_atom_contents =
+                        Sexplib.Pre_sexp.mach_maybe_esc_str atom_contents
+                      in
+                      [ W.Sexp (W.Atom (pos, atom_contents, Some escaped_atom_contents)) ]
+                    | W.Sexp (W.List _) :: _ as lists -> lists
+                    | W.Comment _ :: _ as comments -> comments
+                    | [] -> [] (* cant really happen *))
                |> List.concat
              in
              `List (concatenate_atoms sexps)))
@@ -350,9 +348,9 @@ module Normalize = struct
       String.strip comment
       |> Re.Str.split (force word_split)
       |> List.map ~f:(fun line ->
-        if Re.Str.string_match (force trailing) line 0
-        then Re.Str.matched_group 1 line
-        else line)
+           if Re.Str.string_match (force trailing) line 0
+           then Re.Str.matched_group 1 line
+           else line)
       |> List.filter ~f:(fun s -> String.length s > 0)
   ;;
 
@@ -660,7 +658,7 @@ module Print = struct
            | false ->
              let char_count = char_count + String.length atom in
              if atom_count = leading_atom_threshold || char_count > leading_char_threshold
-             (* Breached the threshold for number of leading atoms. *)
+                (* Breached the threshold for number of leading atoms. *)
              then raise Too_many_atoms
              else
                get_leading_atoms_inner
@@ -731,8 +729,8 @@ module Print = struct
            | Some shape ->
              let shape, aligned, rest = find_alignable conf shape tl ~char_thresh in
              if Array.exists aligned ~f:(function
-               | Atom_line _ -> true
-               | _ -> false)
+                  | Atom_line _ -> true
+                  | _ -> false)
              then
                try_align_inner
                  (Aligned ((shape, associated_comments), aligned) :: acc)
@@ -821,14 +819,14 @@ module Print = struct
         Format.pp_arrayi
           "@ "
           (fun i fmt el ->
-             pp_t_or_aligned
-               conf
-               state
-               (depth + 1)
-               ~index:(i + off)
-               ~len:(Array.length rest)
-               fmt
-               el)
+            pp_t_or_aligned
+              conf
+              state
+              (depth + 1)
+              ~index:(i + off)
+              ~len:(Array.length rest)
+              fmt
+              el)
           fmt
           rest
       in
@@ -854,16 +852,16 @@ module Print = struct
           (fun fmt () -> open_parens conf state ~depth:(depth + 1) fmt 1)
           ()
           (fun fmt (leading, rest) ->
-             if leading_not_empty then print_leading leading_len fmt leading;
-             (* Close the leading atom block. *)
-             Format.pp_close_box fmt ();
-             if rest_not_empty
-             then
-               if leading_not_empty
-               then Format.pp_print_space fmt ()
-               else if not same_line_rest
-               then Format.pp_print_cut fmt ();
-             if rest_not_empty then print_rest leading_len fmt rest)
+            if leading_not_empty then print_leading leading_len fmt leading;
+            (* Close the leading atom block. *)
+            Format.pp_close_box fmt ();
+            if rest_not_empty
+            then
+              if leading_not_empty
+              then Format.pp_print_space fmt ()
+              else if not same_line_rest
+              then Format.pp_print_cut fmt ();
+            if rest_not_empty then print_rest leading_len fmt rest)
           (leading, rest)
           (fun fmt () -> close_parens conf state ~depth:(depth + 1) fmt 1)
           ()
@@ -914,14 +912,14 @@ module Print = struct
           (open_parens conf state ~depth:(depth + 1))
           1
           (fun fmt -> function
-             | [||] -> ()
-             | atoms ->
-               Format.pp_arrayi
-                 "@ "
-                 (pp_atom conf state ~depth:(depth + 1) ~len:(Array.length atoms))
-                 fmt
-                 atoms;
-               Format.pp_print_space fmt ())
+            | [||] -> ()
+            | atoms ->
+              Format.pp_arrayi
+                "@ "
+                (pp_atom conf state ~depth:(depth + 1) ~len:(Array.length atoms))
+                fmt
+                atoms;
+              Format.pp_print_space fmt ())
           atoms
           (open_parens conf state ~depth:(depth + 2))
           d
@@ -993,11 +991,11 @@ module Print = struct
             f
               depth
               (fun fmt comment_list ->
-                 Format.pp_list
-                   "@."
-                   (fun fmt comm -> Format.fprintf fmt "%s" comm)
-                   fmt
-                   comment_list)
+                Format.pp_list
+                  "@."
+                  (fun fmt comm -> Format.fprintf fmt "%s" comm)
+                  fmt
+                  comment_list)
               comment_list
           | Print (_, color, Pretty_print) ->
             let f =
@@ -1015,7 +1013,7 @@ module Print = struct
               (fun fmt spaces -> Format.pp_print_break fmt spaces 0)
               (if indent > 2 && not (List.is_empty comment_list) then indent - 2 else 0)
               (fun fmt comment_list ->
-                 Format.pp_list "@ " Format.pp_print_string fmt comment_list)
+                Format.pp_list "@ " Format.pp_print_string fmt comment_list)
               comment_list)
        | Sexp_comment ((comments, _), sexp) ->
          (match conf.comments with
@@ -1108,7 +1106,7 @@ let run ~next conf fmt =
   Format.pp_open_vbox fmt 0;
   loop false;
   if conf.paren_coloring then (* Reset all formatting *)
-    Format.pp_print_string fmt "[0m";
+                           Format.pp_print_string fmt "[0m";
   Format.pp_close_box fmt ();
   Format.pp_print_flush fmt ()
 ;;
@@ -1124,10 +1122,10 @@ let rec sexp_to_sexp_or_comment = function
 ;;
 
 module Make (M : sig
-    type t
+  type t
 
-    val to_sexp_or_comment : t -> Sexp.With_layout.t_or_comment
-  end) : S with type sexp := M.t = struct
+  val to_sexp_or_comment : t -> Sexp.With_layout.t_or_comment
+end) : S with type sexp := M.t = struct
   type 'a writer = Config.t -> 'a -> M.t -> unit
 
   let pp_formatter conf fmt sexp =
@@ -1182,13 +1180,13 @@ module Make (M : sig
 end
 
 include Make (struct
-    type t = Sexp.t
+  type t = Sexp.t
 
-    let to_sexp_or_comment = sexp_to_sexp_or_comment
-  end)
+  let to_sexp_or_comment = sexp_to_sexp_or_comment
+end)
 
 module Sexp_with_layout = Make (struct
-    type t = W.t_or_comment
+  type t = W.t_or_comment
 
-    let to_sexp_or_comment = Fn.id
-  end)
+  let to_sexp_or_comment = Fn.id
+end)

@@ -38,14 +38,14 @@ type aligned_parens = Parens_alignment of bool [@@deriving sexp]
 type data_alignment =
   | Data_not_aligned
   | Data_aligned of aligned_parens * atom_threshold * char_threshold * depth_threshold
-  (** Character threshold is excluding spaces and parentheses, the maximum depth can't exceed
+      (** Character threshold is excluding spaces and parentheses, the maximum depth can't exceed
       the depth threshold.
   *)
 [@@deriving sexp]
 
 type atom_coloring =
   | Color_first of int
-  (** Color the first one, only if the number of atoms that follow it at most the value of
+      (** Color the first one, only if the number of atoms that follow it at most the value of
       the constructor's argument.
   *)
   | Color_all

@@ -2,7 +2,6 @@ open! Base
 
 let of_sexp_error = Sexplib.Conv.of_sexp_error
 
-
 type color =
   | Black
   | Red
@@ -200,12 +199,12 @@ type t =
     indent : int [@default 2]
   ; (* Alignment of sexp list into columns. *)
     data_alignment : data_alignment
-                     [@default
-                       Data_aligned
-                         ( Parens_alignment false
-                         , Atom_threshold 6
-                         , Character_threshold 60
-                         , Depth_threshold 3 )]
+       [@default
+         Data_aligned
+           ( Parens_alignment false
+           , Atom_threshold 6
+           , Character_threshold 60
+           , Depth_threshold 3 )]
   ; color_scheme : color array
   ; atom_coloring : atom_coloring [@default Color_first 3]
   ; atom_printing : atom_printing [@default Escaped]
@@ -214,12 +213,12 @@ type t =
   ; closing_parens : parens [@default Same_line]
   ; comments : comments [@default Print (Indent_comment 3, Some Green, Pretty_print)]
   ; singleton_limit : singleton_limit
-                      [@default Singleton_limit (Atom_threshold 3, Character_threshold 15)]
+       [@default Singleton_limit (Atom_threshold 3, Character_threshold 15)]
   ; (* Number of atoms that will be marked as leading in regular lists. They will be put on
        a single line, if they fit.
     *)
     leading_threshold : atom_threshold * char_threshold
-                        [@default Atom_threshold 3, Character_threshold 20]
+       [@default Atom_threshold 3, Character_threshold 20]
   ; separator : separator [@default Empty_line]
   ; sticky_comments : sticky_comments [@default After]
   }
@@ -229,7 +228,6 @@ let t_of_sexp sexp =
   let t = t_of_sexp sexp in
   if t.indent < 0 then of_sexp_error "Indentation must be non-negative." sexp else t
 ;;
-
 
 let default_color_scheme = [| Magenta; Yellow; Cyan; White |]
 
@@ -256,12 +254,12 @@ let default =
 ;;
 
 let update
-      ?color
-      ?interpret_atom_as_sexp
-      ?drop_comments
-      ?new_line_separator
-      ?custom_data_alignment
-      conf
+  ?color
+  ?interpret_atom_as_sexp
+  ?drop_comments
+  ?new_line_separator
+  ?custom_data_alignment
+  conf
   =
   let conf =
     match color with
@@ -305,12 +303,12 @@ let update
 ;;
 
 let create
-      ?(color = false)
-      ?(interpret_atom_as_sexp = false)
-      ?(drop_comments = false)
-      ?(new_line_separator = false)
-      ?custom_data_alignment
-      ()
+  ?(color = false)
+  ?(interpret_atom_as_sexp = false)
+  ?(drop_comments = false)
+  ?(new_line_separator = false)
+  ?custom_data_alignment
+  ()
   =
   update
     ~color

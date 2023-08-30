@@ -128,9 +128,9 @@ let%expect_test "long atoms with newlines are hard to read" =
 ;;
 
 let test
-      ?(sticky_comments = Sexp_pretty.Config.default.sticky_comments)
-      ?(atom_printing = Sexp_pretty.Config.default.atom_printing)
-      string
+  ?(sticky_comments = Sexp_pretty.Config.default.sticky_comments)
+  ?(atom_printing = Sexp_pretty.Config.default.atom_printing)
+  string
   =
   let lexbuf = Lexing.from_string string in
   let next () =
