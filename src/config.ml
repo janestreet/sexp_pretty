@@ -131,7 +131,6 @@ type atom_printing =
    through ATOM_N.
 
    Character threshold is excluding spaces.
-
 *)
 type singleton_limit = Singleton_limit of atom_threshold * char_threshold
 [@@deriving sexp]
