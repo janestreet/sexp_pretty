@@ -102,7 +102,8 @@ let%expect_test "leading and trailing whitespace" =
     │ #| a|#  │ #|.a.|#      │ #|.a|#             │
     │ #|a |#  │ #|.a.|#      │ #|a.|#             │
     │ #| a |# │ #|.a.|#      │ #|.a.|#            │
-    └─────────┴──────────────┴────────────────────┘ |}]
+    └─────────┴──────────────┴────────────────────┘
+    |}]
 ;;
 
 let%expect_test "examples" =
@@ -117,7 +118,8 @@ let%expect_test "examples" =
   [%expect {|
     Pretty_print: #| a b |#
 
-    Conservative_print: #| a  b |# |}];
+    Conservative_print: #| a  b |#
+    |}];
   (* multiple lines *)
   test {| #| a
 b
@@ -132,7 +134,8 @@ b
     b
      c
 
-       d |# |}];
+       d |#
+    |}];
   (* really long comment *)
   test
     {| #| really long comment to see if sexp pretty printing will ever add new line breaks |# |};
@@ -143,7 +146,8 @@ b
        breaks
     |#
 
-    Conservative_print: #| really long comment to see if sexp pretty printing will ever add new line breaks |# |}];
+    Conservative_print: #| really long comment to see if sexp pretty printing will ever add new line breaks |#
+    |}];
   (* comments nested in sexp comment *)
   test
     {| #;
@@ -161,7 +165,8 @@ with
 
     Conservative_print: #;
     ; plain comment#| block comment |#
-    (sexp with #| nested comment |#) |}];
+    (sexp with #| nested comment |#)
+    |}];
   (* quoted newline *)
   test {| #| "quoted
 newline" |# |};
@@ -170,7 +175,8 @@ newline" |# |};
     Pretty_print: #| "quoted newline" |#
 
     Conservative_print: #| "quoted
-    newline" |# |}];
+    newline" |#
+    |}];
   ignore ()
 ;;
 
@@ -288,7 +294,7 @@ let%expect_test "sticky comments" =
         comment
         |#
     ()))
-      |}];
+    |}];
   ignore ()
 ;;
 

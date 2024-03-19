@@ -124,7 +124,8 @@ let%expect_test "long atoms with newlines are hard to read" =
     \n6\
     \n7\
     \n8\
-    \n9" |}]
+    \n9"
+    |}]
 ;;
 
 let test
@@ -188,7 +189,8 @@ string" ;; comment too
       (a list)
       ;; comment too
       ;; another comment
-      "another long\nstring") |}]
+      "another long\nstring")
+    |}]
 ;;
 
 let%expect_test "test comments on all [sticky_comments] config" =
@@ -265,7 +267,8 @@ let%expect_test "test comments on all [sticky_comments] config" =
     YYYYY
     #;
     ZZZZZ
-    ((iii (jjj kkk) #; jkjkjk #; kjkjkj lll)) |}];
+    ((iii (jjj kkk) #; jkjkjk #; kjkjkj lll))
+    |}];
   test string ~sticky_comments:Same_line;
   [%expect
     {|
@@ -299,7 +302,8 @@ let%expect_test "test comments on all [sticky_comments] config" =
     YYYYY
     #;
     ZZZZZ
-    ((iii (jjj kkk) #; jkjkjk #; kjkjkj lll)) |}];
+    ((iii (jjj kkk) #; jkjkjk #; kjkjkj lll))
+    |}];
   test string ~sticky_comments:After;
   [%expect
     {|
@@ -335,7 +339,8 @@ let%expect_test "test comments on all [sticky_comments] config" =
     YYYYY
     #;
     ZZZZZ
-    ((iii (jjj kkk) #; jkjkjk #; kjkjkj lll)) |}]
+    ((iii (jjj kkk) #; jkjkjk #; kjkjkj lll))
+    |}]
 ;;
 
 let%expect_test "aligned data" =
@@ -362,7 +367,8 @@ line" (String "should not be aligend"))   ;; 5
      ("single new\nline" (String "should not be aligend")) ;; 5
      (address            (String "50 St. James Street")) ;; 6
      (url                (String http://www.JSON.org/)) ;; 7
-    ) |}];
+    )
+    |}];
   test string ~sticky_comments:Same_line ~atom_printing:Minimal_escaping;
   [%expect
     {|
@@ -374,7 +380,8 @@ line" (String "should not be aligend"))   ;; 5
     line" (String "should not be aligend")) ;; 5
      (address (String "50 St. James Street")) ;; 6
      (url     (String http://www.JSON.org/)) ;; 7
-    ) |}]
+    )
+    |}]
 ;;
 
 let%expect_test "singleton lists" =
@@ -415,7 +422,8 @@ let%expect_test "singleton lists" =
       elm1 elm2
       elm3 ;; comment 1
            ;; comment 2
-    )) |}]
+    ))
+    |}]
 ;;
 
 (* Tests with [Minimal_escaping] *)
@@ -438,7 +446,8 @@ let%expect_test "long atom with newlines" =
     6
     7
     8
-    9" |}];
+    9"
+    |}];
   [%test_result: Sexp.t] ~expect:sexp (Sexp.of_string pretty)
 ;;
 
@@ -454,7 +463,8 @@ let%expect_test "list with an atom having newlines" =
     def ghi
     jkl"
         7890)
-      HI) |}];
+      HI)
+    |}];
   [%test_result: Sexp.t] ~expect:sexp (Sexp.of_string pretty)
 ;;
 
@@ -466,7 +476,8 @@ let%expect_test "list with the middle leading atom having newlines" =
     (ABCD
       "EFG
     EEFFGG"
-      HIJ) |}]
+      HIJ)
+    |}]
 ;;
 
 let%expect_test "list with the last leading atom having newlines" =
@@ -476,7 +487,8 @@ let%expect_test "list with the last leading atom having newlines" =
   [%expect {|
     (ABCD EFG
       "HIHI
-    HIJ") |}]
+    HIJ")
+    |}]
 ;;
 
 let%expect_test "atom with characters to be escaped" =
@@ -485,7 +497,8 @@ let%expect_test "atom with characters to be escaped" =
   print_endline pretty;
   [%expect {|
     "AB\bCD	EF
-    GH\011IJ\012KL\rMN\\OP" |}];
+    GH\011IJ\012KL\rMN\\OP"
+    |}];
   [%test_result: Sexp.t] ~expect:sexp (Sexp.of_string pretty)
 ;;
 
@@ -493,8 +506,7 @@ let%expect_test "atom with escaped characters" =
   let sexp = Sexp.Atom {|AB\bCD\tEF\nGH\011IJ\012KL\rMN\\OP\"QR|} in
   let pretty = pretty_string conf sexp in
   print_endline pretty;
-  [%expect {|
-  "AB\\bCD\\tEF\\nGH\\011IJ\\012KL\\rMN\\\\OP\\\"QR" |}];
+  [%expect {| "AB\\bCD\\tEF\\nGH\\011IJ\\012KL\\rMN\\\\OP\\\"QR" |}];
   [%test_result: Sexp.t] ~expect:sexp (Sexp.of_string pretty)
 ;;
 
@@ -545,7 +557,8 @@ let%expect_test "all characters" =
     "\224\225\226\227\228\229\230\231"
     "\232\233\234\235\236\237\238\239"
     "\240\241\242\243\244\245\246\247"
-    "\248\249\250\251\252\253\254\255" |xxx}];
+    "\248\249\250\251\252\253\254\255"
+    |xxx}];
   (* one atom each *)
   List.iter chars ~f:(fun list ->
     test (List (List.map list ~f:(fun char -> Sexp.Atom (String.of_char char)))));
@@ -589,5 +602,6 @@ let%expect_test "all characters" =
     ("\224" "\225" "\226" "\227" "\228" "\229" "\230" "\231")
     ("\232" "\233" "\234" "\235" "\236" "\237" "\238" "\239")
     ("\240" "\241" "\242" "\243" "\244" "\245" "\246" "\247")
-    ("\248" "\249" "\250" "\251" "\252" "\253" "\254" "\255") |}]
+    ("\248" "\249" "\250" "\251" "\252" "\253" "\254" "\255")
+    |}]
 ;;
