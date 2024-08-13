@@ -76,9 +76,9 @@ let%expect_test "leading and trailing whitespace" =
     let columns =
       Ascii_table_kernel.Column.create "comment" to_string
       :: List.map [%all: Comment_print_style.t] ~f:(fun style ->
-           Ascii_table_kernel.Column.create
-             (Comment_print_style.to_string style)
-             (to_string_pretty ~style))
+        Ascii_table_kernel.Column.create
+          (Comment_print_style.to_string style)
+          (to_string_pretty ~style))
     ;;
   end
   in
@@ -115,13 +115,15 @@ let%expect_test "examples" =
   in
   (* multiple internal whitespace *)
   test {| #| a  b |# |};
-  [%expect {|
+  [%expect
+    {|
     Pretty_print: #| a b |#
 
     Conservative_print: #| a  b |#
     |}];
   (* multiple lines *)
-  test {| #| a
+  test
+    {| #| a
 b
  c
 
@@ -168,7 +170,8 @@ with
     (sexp with #| nested comment |#)
     |}];
   (* quoted newline *)
-  test {| #| "quoted
+  test
+    {| #| "quoted
 newline" |# |};
   [%expect
     {|
@@ -185,16 +188,15 @@ let%expect_test "sticky comments" =
     let t = of_string s in
     Config.[ Before; After; Same_line ]
     |> List.iter ~f:(fun sticky ->
-         let label = [%sexp_of: Config.sticky_comments] sticky |> Sexp.to_string in
-         print_endline [%string {|%{label}:|}];
-         List.iter [%all: Comment_print_style.t] ~f:(fun comment_print_style ->
-           let s =
-             let config = get_config ~comment_print_style in
-             let config = { config with Config.sticky_comments = sticky } in
-             List.map t ~f:(Sexp_with_layout.pretty_string config)
-             |> String.concat ~sep:" "
-           in
-           print_endline [%string "%{comment_print_style#Comment_print_style}:\n%{s}"]))
+      let label = [%sexp_of: Config.sticky_comments] sticky |> Sexp.to_string in
+      print_endline [%string {|%{label}:|}];
+      List.iter [%all: Comment_print_style.t] ~f:(fun comment_print_style ->
+        let s =
+          let config = get_config ~comment_print_style in
+          let config = { config with Config.sticky_comments = sticky } in
+          List.map t ~f:(Sexp_with_layout.pretty_string config) |> String.concat ~sep:" "
+        in
+        print_endline [%string "%{comment_print_style#Comment_print_style}:\n%{s}"]))
   in
   test
     {|
@@ -407,7 +409,7 @@ let test_one style =
 
 let%expect_test "quickcheck" =
   let test here style =
-    require_does_not_raise here (fun () ->
+    require_does_not_raise ~here (fun () ->
       let module M = (val round_trippable_sexps style) in
       Base_quickcheck.Test.run_exn (module M) ~f:(unstage (test_one style)))
   in

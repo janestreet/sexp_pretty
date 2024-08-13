@@ -16,7 +16,7 @@ module type S = sig
 
   val pp_buffer : Buffer.t writer
   val pp_out_channel : Stdlib.out_channel writer
-  val pp_blit : (string, unit) Blit.sub writer
+  val pp_blit : (string, unit) Blit.sub_global writer
 
   (** [pretty_string] needs to allocate. If you care about performance, using one of the
       [pp_*] functions above is advised. *)

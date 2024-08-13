@@ -436,7 +436,8 @@ let%expect_test "long atom with newlines" =
   let sexp = Sexp.Atom (String.concat ~sep:"\n" (List.init 10 ~f:Int.to_string)) in
   let pretty = pretty_string conf sexp in
   print_endline pretty;
-  [%expect {|
+  [%expect
+    {|
     "0
     1
     2
@@ -472,7 +473,8 @@ let%expect_test "list with the middle leading atom having newlines" =
   let sexp = Sexp.of_string "(ABCD \"EFG\nEEFFGG\" HIJ)" in
   let pretty = pretty_string conf sexp in
   print_endline pretty;
-  [%expect {|
+  [%expect
+    {|
     (ABCD
       "EFG
     EEFFGG"
@@ -484,7 +486,8 @@ let%expect_test "list with the last leading atom having newlines" =
   let sexp = Sexp.of_string "(ABCD EFG \"HIHI\nHIJ\")" in
   let pretty = pretty_string conf sexp in
   print_endline pretty;
-  [%expect {|
+  [%expect
+    {|
     (ABCD EFG
       "HIHI
     HIJ")
@@ -495,7 +498,8 @@ let%expect_test "atom with characters to be escaped" =
   let sexp = Sexp.Atom "AB\bCD\tEF\nGH\011IJ\012KL\rMN\\OP" in
   let pretty = pretty_string conf sexp in
   print_endline pretty;
-  [%expect {|
+  [%expect
+    {|
     "AB\bCD	EF
     GH\011IJ\012KL\rMN\\OP"
     |}];
@@ -515,11 +519,7 @@ let%expect_test "all characters" =
   let test sexp =
     let string = pretty_string conf sexp in
     print_string string;
-    Expect_test_helpers_base.require_equal
-      [%here]
-      (module Sexp)
-      sexp
-      (Sexp.of_string string)
+    Expect_test_helpers_base.require_equal (module Sexp) sexp (Sexp.of_string string)
   in
   (* grouped in atoms *)
   List.iter chars ~f:(fun list -> test (Atom (String.of_char_list list)));
