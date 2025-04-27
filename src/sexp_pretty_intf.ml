@@ -53,5 +53,8 @@ module type Sexp_pretty = sig
     val of_sexp_or_comment : Config.t -> Sexplib.Sexp.With_layout.t_or_comment -> t
   end
 
-  val sexp_to_sexp_or_comment : Sexp.t -> Sexplib.Sexp.With_layout.t_or_comment
+  val sexp_to_sexp_or_comment
+    :  Config.t
+    -> Sexp.t
+    -> Sexplib.Sexp.With_layout.t_or_comment
 end

@@ -15,7 +15,10 @@ let normalized_sexp t =
 ;;
 
 let normalize conf sexp =
-  sexp |> sexp_to_sexp_or_comment |> Normalize.of_sexp_or_comment conf |> normalized_sexp
+  sexp
+  |> sexp_to_sexp_or_comment conf
+  |> Normalize.of_sexp_or_comment conf
+  |> normalized_sexp
 ;;
 
 (* Tests with atom interpretation *)
@@ -604,4 +607,114 @@ let%expect_test "all characters" =
     ("\240" "\241" "\242" "\243" "\244" "\245" "\246" "\247")
     ("\248" "\249" "\250" "\251" "\252" "\253" "\254" "\255")
     |}]
+;;
+
+(* Tests with [Utf8] *)
+
+let conf encoding = { (Config.create ~color:false ()) with encoding }
+
+let%expect_test "all chars same under utf8" =
+  let test sexp =
+    Expect_test_helpers_base.require_equal
+      (module String)
+      (pretty_string (conf Utf8) sexp)
+      (pretty_string (conf Ascii) sexp)
+  in
+  let chars = List.chunks_of Char.all ~length:8 in
+  List.iter chars ~f:(fun list -> test (Atom (String.of_char_list list)));
+  [%expect {| |}];
+  List.iter chars ~f:(fun list ->
+    test (List (List.map list ~f:(fun char -> Sexp.Atom (String.of_char char)))));
+  [%expect {| |}]
+;;
+
+let%expect_test "non-ascii chars" =
+  let test sexp =
+    let ascii = pretty_string (conf Ascii) sexp in
+    let utf8 = pretty_string (conf Utf8) sexp in
+    print_string ascii;
+    print_string utf8;
+    Expect_test_helpers_base.require_equal (module Sexp) (Sexp.of_string utf8) sexp;
+    Expect_test_helpers_base.require_equal
+      (module Sexp)
+      (Sexp.of_string utf8)
+      (Sexp.of_string ascii)
+  in
+  test (Atom "foo bar");
+  [%expect
+    {|
+    "foo bar"
+    "foo bar"
+    |}];
+  test (Atom "こんにちは");
+  [%expect
+    {|
+    "\227\129\147\227\130\147\227\129\171\227\129\161\227\129\175"
+    こんにちは
+    |}];
+  test (Atom "foo bar こんにちは");
+  [%expect
+    {|
+    "foo bar \227\129\147\227\130\147\227\129\171\227\129\161\227\129\175"
+    "foo bar こんにちは"
+    |}];
+  test (Atom "\tこんにちは");
+  [%expect
+    {|
+    "\t\227\129\147\227\130\147\227\129\171\227\129\161\227\129\175"
+    "\tこんにちは"
+    |}];
+  test
+    (List
+       [ Atom "\t\227\129\147\227\130\147\227\129\171\227\129\161\227\129\175"
+       ; Atom "\227\129\147\227\130\147\227\129\171\227\129\161\227\129\175"
+       ]);
+  [%expect
+    {|
+    ("\t\227\129\147\227\130\147\227\129\171\227\129\161\227\129\175"
+     "\227\129\147\227\130\147\227\129\171\227\129\161\227\129\175")
+    ("\tこんにちは" こんにちは)
+    |}]
+;;
+
+let%expect_test "quickcheck round-tripping" =
+  let module Sexp_utf8 = struct
+    type t = Sexp.t [@@deriving sexp_of, quickcheck ~shrinker]
+
+    let quickcheck_generator =
+      let open Base_quickcheck in
+      Generator.sexp_of (String.Utf8.quickcheck_generator :> string Generator.t)
+    ;;
+  end
+  in
+  Quickcheck.iter ~trials:15 Sexp_utf8.quickcheck_generator ~f:(fun sexp -> print_s sexp);
+  [%expect
+    {|
+    ""
+    (())
+    ("\242\179\128\160")
+    ("" () ())
+    ()
+    (() "\244\143\191\191" ())
+    (("") "\231\189\186")
+    ()
+    ()
+    (() () "" () () () "")
+    (() () ((())))
+    "#\000Iql\238\174\172r\244\143\191\191*"
+    "\226\146\148"
+    ()
+    "{\217\161\024]\025\213\147\199\188\216\186\244\132\180\183N"
+    |}];
+  Expect_test_helpers_base.quickcheck_m
+    (module Sexp_utf8)
+    ~f:(fun sexp ->
+      Expect_test_helpers_base.require_equal
+        (module Sexp)
+        (Sexp.of_string (pretty_string (conf Ascii) sexp))
+        sexp;
+      Expect_test_helpers_base.require_equal
+        (module Sexp)
+        (Sexp.of_string (pretty_string (conf Utf8) sexp))
+        sexp)
 ;;

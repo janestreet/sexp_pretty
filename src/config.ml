@@ -193,6 +193,11 @@ type sticky_comments =
   | After
 [@@deriving sexp]
 
+type encoding =
+  | Ascii
+  | Utf8
+[@@deriving enumerate, sexp]
+
 type t =
   { (* The size of indentation in number of spaces. *)
     indent : int [@default 2]
@@ -220,6 +225,7 @@ type t =
        [@default Atom_threshold 3, Character_threshold 20]
   ; separator : separator [@default Empty_line]
   ; sticky_comments : sticky_comments [@default After]
+  ; encoding : encoding [@default Ascii]
   }
 [@@deriving sexp]
 
@@ -249,6 +255,7 @@ let default =
   ; leading_threshold = Atom_threshold 3, Character_threshold 40
   ; separator = Empty_line
   ; sticky_comments = After
+  ; encoding = Ascii
   }
 ;;
 
@@ -258,6 +265,7 @@ let update
   ?drop_comments
   ?new_line_separator
   ?custom_data_alignment
+  ?encoding
   conf
   =
   let conf =
@@ -298,6 +306,11 @@ let update
     | None -> conf
     | Some data_alignment -> { conf with data_alignment }
   in
+  let conf =
+    match encoding with
+    | None -> conf
+    | Some encoding -> { conf with encoding }
+  in
   conf
 ;;
 
@@ -307,6 +320,7 @@ let create
   ?(drop_comments = false)
   ?(new_line_separator = false)
   ?custom_data_alignment
+  ?encoding
   ()
   =
   update
@@ -315,5 +329,6 @@ let create
     ~drop_comments
     ~new_line_separator
     ?custom_data_alignment
+    ?encoding
     default
 ;;

@@ -3,12 +3,11 @@
     1. Handwritten tests showing the pretty strings for some known examples.
 
     2. Quickcheck tests which round-trip a sexp through pretty-printing and assert that
-    the comments are preserved up to some post-processing of whitespace.
+       the comments are preserved up to some post-processing of whitespace.
 
     The post-processing is applied to both the original comments and the pretty comments.
     It describes how closely we can look before we see how pretty-printing has changed
-    comments.
-*)
+    comments. *)
 
 open! Import
 open! Expect_test_helpers_core
@@ -85,7 +84,7 @@ let%expect_test "leading and trailing whitespace" =
   let ascii_table columns rows =
     let screen =
       Ascii_table_kernel.draw columns rows ~prefer_split_on_spaces:false
-      |> Option.value_exn ~here:[%here]
+      |> Option.value_exn
     in
     Ascii_table_kernel.Screen.to_string
       screen
