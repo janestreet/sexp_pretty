@@ -26,10 +26,9 @@ type atom_threshold = Atom_threshold of int [@@deriving sexp]
 type char_threshold = Character_threshold of int [@@deriving sexp]
 
 (** Depth is the depth of an atom. For example, in (a (b (c) d)), the depth of a is 1, the
-    depth of b and d is 2, and depth of c is 3.
-    Depth_threshold usually refers to the maximum depth of any atom in a list for it to be
-    considered for certain heuristic, e.g. data alignment.
-*)
+    depth of b and d is 2, and depth of c is 3. Depth_threshold usually refers to the
+    maximum depth of any atom in a list for it to be considered for certain heuristic,
+    e.g. data alignment. *)
 type depth_threshold = Depth_threshold of int [@@deriving sexp]
 
 (** Whether or not should closing parentheses be aligned. *)
@@ -38,24 +37,21 @@ type aligned_parens = Parens_alignment of bool [@@deriving sexp]
 type data_alignment =
   | Data_not_aligned
   | Data_aligned of aligned_parens * atom_threshold * char_threshold * depth_threshold
-  (** Character threshold is excluding spaces and parentheses, the maximum depth can't exceed
-      the depth threshold.
-  *)
+  (** Character threshold is excluding spaces and parentheses, the maximum depth can't
+      exceed the depth threshold. *)
 [@@deriving sexp]
 
 type atom_coloring =
   | Color_first of int
   (** Color the first one, only if the number of atoms that follow it at most the value of
-      the constructor's argument.
-  *)
+      the constructor's argument. *)
   | Color_all
   | Color_none
 [@@deriving sexp]
 
 (** This currently relates only to block comments. [Auto_indent] tries to infer the
     indentation from the original formatting, [Indent_comment n] indents new lines in a
-    block comment by n spaces.
-*)
+    block comment by n spaces. *)
 type comment_indent =
   | Auto_indent_comment
   | Indent_comment of int
@@ -85,16 +81,12 @@ type atom_printing =
     and are printed in the following way if they are too big to fit on a line/force a
     breakline for other reasons:
 
-    (ATOM_1 .. ATOM_N (
-    ....
-    ))
+    (ATOM_1 .. ATOM_N ( .... ))
 
     Thresholds correspond to what's an acceptable number/size of the leading atoms ATOM_1
     through ATOM_N.
 
-    Character threshold is excluding spaces.
-
-*)
+    Character threshold is excluding spaces. *)
 type singleton_limit = Singleton_limit of atom_threshold * char_threshold
 [@@deriving sexp]
 
@@ -108,11 +100,9 @@ type separator =
 [@@deriving sexp]
 
 (** Should closing parentheses be on the same line as the last sexp in the list (modulo
-    comments), or should they be on new lines?
-    Should opening parentheses always be on the same line as what follows them, or should
-    they sometimes (when the first item in the list is a list followed by some other sexp)
-    be on a separate line?
-*)
+    comments), or should they be on new lines? Should opening parentheses always be on the
+    same line as what follows them, or should they sometimes (when the first item in the
+    list is a list followed by some other sexp) be on a separate line? *)
 type parens =
   | Same_line
   | New_line
@@ -124,6 +114,11 @@ type sticky_comments =
   | Same_line
   | After
 [@@deriving sexp]
+
+type encoding =
+  | Ascii
+  | Utf8
+[@@deriving enumerate, sexp]
 
 type t =
   { indent : int
@@ -139,6 +134,7 @@ type t =
   ; leading_threshold : atom_threshold * char_threshold
   ; separator : separator
   ; sticky_comments : sticky_comments
+  ; encoding : encoding
   }
 [@@deriving sexp]
 
@@ -150,6 +146,7 @@ val create
   -> ?drop_comments:bool
   -> ?new_line_separator:bool
   -> ?custom_data_alignment:data_alignment
+  -> ?encoding:encoding
   -> unit
   -> t
 
@@ -159,5 +156,6 @@ val update
   -> ?drop_comments:bool
   -> ?new_line_separator:bool
   -> ?custom_data_alignment:data_alignment
+  -> ?encoding:encoding
   -> t
   -> t
