@@ -76,12 +76,18 @@ type atom_printing =
 
 (** Singleton_lists are lists of the following format
 
+    {v
     (ATOM_1 .. ATOM_N (....))
+    v}
 
     and are printed in the following way if they are too big to fit on a line/force a
     breakline for other reasons:
 
-    (ATOM_1 .. ATOM_N ( .... ))
+    {v
+    (ATOM_1 .. ATOM_N (
+    ....
+    ))
+    v}
 
     Thresholds correspond to what's an acceptable number/size of the leading atoms ATOM_1
     through ATOM_N.
