@@ -381,14 +381,12 @@ let round_trippable_sexps style =
       a
       b
   in
-  Test_helper.filter_map
-    (module Sexp_string_quickcheck.Sexp_string)
-    ~f:(fun s ->
-      Option.try_with (fun () ->
-        let prev = of_string s in
-        let next = round_trip_pretty style prev in
-        assert (equal_num_comments prev next);
-        s))
+  Test_helper.filter_map (module Sexp_string_quickcheck.Sexp_string) ~f:(fun s ->
+    Option.try_with (fun () ->
+      let prev = of_string s in
+      let next = round_trip_pretty style prev in
+      assert (equal_num_comments prev next);
+      s))
 ;;
 
 let test_one style =
