@@ -706,15 +706,13 @@ let%expect_test "quickcheck round-tripping" =
     ()
     "{\217\161\024]\025\213\147\199\188\216\186\244\132\180\183N"
     |}];
-  Expect_test_helpers_base.quickcheck_m
-    (module Sexp_utf8)
-    ~f:(fun sexp ->
-      Expect_test_helpers_base.require_equal
-        (module Sexp)
-        (Sexp.of_string (pretty_string (conf Ascii) sexp))
-        sexp;
-      Expect_test_helpers_base.require_equal
-        (module Sexp)
-        (Sexp.of_string (pretty_string (conf Utf8) sexp))
-        sexp)
+  Expect_test_helpers_base.quickcheck_m (module Sexp_utf8) ~f:(fun sexp ->
+    Expect_test_helpers_base.require_equal
+      (module Sexp)
+      (Sexp.of_string (pretty_string (conf Ascii) sexp))
+      sexp;
+    Expect_test_helpers_base.require_equal
+      (module Sexp)
+      (Sexp.of_string (pretty_string (conf Utf8) sexp))
+      sexp)
 ;;

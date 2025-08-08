@@ -206,6 +206,8 @@ let%expect_test "sticky comments" =
     (b c) ;; comment 3
     ( ;; comment 4
       d ;; comment 5
+    ("single new
+line") ;; comment 6
 
     #| multi line
     block
@@ -226,6 +228,8 @@ let%expect_test "sticky comments" =
       (;; comment 4
        ;; comment 5
        d
+       ;; comment 6
+       ("single new\nline")
        #| multi line block comment |#
        ()))
 
@@ -238,6 +242,8 @@ let%expect_test "sticky comments" =
       (;; comment 4
        ;; comment 5
        d
+       ;; comment 6
+       ("single new\nline")
        #| multi line
         block
         comment
@@ -254,6 +260,8 @@ let%expect_test "sticky comments" =
       (;; comment 4
        d
        ;; comment 5
+       ("single new\nline")
+       ;; comment 6
        #| multi line block comment |#
        ()))
 
@@ -266,6 +274,8 @@ let%expect_test "sticky comments" =
       (;; comment 4
        d
        ;; comment 5
+       ("single new\nline")
+       ;; comment 6
        #| multi line
         block
         comment
@@ -280,6 +290,7 @@ let%expect_test "sticky comments" =
       (b c) ;; comment 3
       (;; comment 4
        d ;; comment 5
+       ("single new\nline") ;; comment 6
        #| multi line block comment |#
        ()))
 
@@ -290,6 +301,7 @@ let%expect_test "sticky comments" =
       (b c) ;; comment 3
       (;; comment 4
        d ;; comment 5
+       ("single new\nline") ;; comment 6
        #| multi line
         block
         comment
@@ -381,14 +393,12 @@ let round_trippable_sexps style =
       a
       b
   in
-  Test_helper.filter_map
-    (module Sexp_string_quickcheck.Sexp_string)
-    ~f:(fun s ->
-      Option.try_with (fun () ->
-        let prev = of_string s in
-        let next = round_trip_pretty style prev in
-        assert (equal_num_comments prev next);
-        s))
+  Test_helper.filter_map (module Sexp_string_quickcheck.Sexp_string) ~f:(fun s ->
+    Option.try_with (fun () ->
+      let prev = of_string s in
+      let next = round_trip_pretty style prev in
+      assert (equal_num_comments prev next);
+      s))
 ;;
 
 let test_one style =

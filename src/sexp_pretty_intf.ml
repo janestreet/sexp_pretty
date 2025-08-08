@@ -33,6 +33,7 @@ module type Sexp_pretty = sig
 
   include S with type sexp := Sexp.t
   module Sexp_with_layout : S with type sexp := Sexplib.Sexp.With_layout.t_or_comment
+  module Parsexp_cst : S with type sexp := Parsexp.Cst.t_or_comment
 
   module Normalize : sig
     type t =
@@ -50,11 +51,12 @@ module type Sexp_pretty = sig
       | Atom of string
       | List of t list
 
-    val of_sexp_or_comment : Config.t -> Sexplib.Sexp.With_layout.t_or_comment -> t
+    val of_sexp_or_comment : Config.t -> Parsexp.Cst.t_or_comment -> t
   end
 
-  val sexp_to_sexp_or_comment
-    :  Config.t
-    -> Sexp.t
-    -> Sexplib.Sexp.With_layout.t_or_comment
+  val sexp_to_sexp_or_comment : Config.t -> Sexp.t -> Parsexp.Cst.t_or_comment
+
+  val sexp_with_layout_to_sexp_or_comment
+    :  Sexplib.Sexp.With_layout.t_or_comment
+    -> Parsexp.Cst.t_or_comment
 end
