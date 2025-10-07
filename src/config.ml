@@ -209,7 +209,7 @@ type t =
            , Atom_threshold 6
            , Character_threshold 60
            , Depth_threshold 3 )]
-  ; color_scheme : color array
+  ; color_scheme : color iarray
   ; atom_coloring : atom_coloring [@default Color_first 3]
   ; atom_printing : atom_printing [@default Escaped]
   ; paren_coloring : paren_coloring [@default true]
@@ -234,7 +234,7 @@ let t_of_sexp sexp =
   if t.indent < 0 then of_sexp_error "Indentation must be non-negative." sexp else t
 ;;
 
-let default_color_scheme = [| Magenta; Yellow; Cyan; White |]
+let default_color_scheme = Iarray.of_array [| Magenta; Yellow; Cyan; White |]
 
 let default =
   { indent = 2

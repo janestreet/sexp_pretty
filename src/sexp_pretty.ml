@@ -14,7 +14,7 @@ module Sexp_impl = struct
   let get conf : (module S) =
     match conf.encoding with
     | Ascii -> (module Sexplib.Pre_sexp)
-    | Utf8 -> (module Base.Sexp.Utf8)
+    | Utf8 -> (module Base.Sexp.Utf8.Pretty_printing_helpers_private)
   ;;
 
   let must_escape conf =
@@ -31,9 +31,31 @@ module Sexp_impl = struct
     let (module Sexp_impl) = get conf in
     Sexp_impl.esc_str
   ;;
+
+  let minimal_escaping conf at =
+    let body =
+      match conf.encoding with
+      | Ascii ->
+        String.concat_map at ~f:(fun char ->
+          match char with
+          | '"' | '\\' -> String.of_char '\\' ^ String.of_char char
+          | ' ' | '\t' | '\n' -> String.of_char char
+          | _ -> if Char.is_print char then String.of_char char else Char.escaped char)
+      | Utf8 ->
+        String.Utf8.of_string at
+        |> String.Utf8.to_list
+        |> List.concat_map ~f:(fun char ->
+          match Uchar.to_char char with
+          | Some ('"' | '\\') -> [ Uchar.of_char '\\'; char ]
+          | _ -> [ char ])
+        |> String.Utf8.of_list
+        |> String.Utf8.to_string
+    in
+    String.concat [ "\""; body; "\"" ]
+  ;;
 end
 
-module W = Sexp.With_layout
+module W = Parsexp.Cst
 
 module Format = struct
   include Stdlib.Format
@@ -62,7 +84,7 @@ type content_kind =
 type state = { content_kind : content_kind }
 
 let start_state = { content_kind = Sexp }
-let split = lazy (Re.Str.regexp "[ \t]+")
+let split = Portable_lazy.from_fun (fun () -> Re.Pcre.regexp "[ \t]+")
 
 let color_to_code = function
   | Black -> 30
@@ -85,8 +107,8 @@ let color_to_code = function
 ;;
 
 let rainbow_open_tag conf tag =
-  let args = Re.Str.split (force split) tag in
-  let color_count = Array.length conf.color_scheme in
+  let args = Re.Pcre.split ~rex:(Portable_lazy.force split) tag in
+  let color_count = Iarray.length conf.color_scheme in
   match args with
   | [ "d"; n ] ->
     let i = Int.of_string n in
@@ -95,7 +117,7 @@ let rainbow_open_tag conf tag =
         (color_to_code
            (if i < 0 || color_count < 1
             then Default
-            else conf.color_scheme.(i % color_count)))
+            else conf.color_scheme.:(i % color_count)))
     ^ "m"
   (* Printing out comments. *)
   | [ "c"; _ ] ->
@@ -161,21 +183,11 @@ let must_escape conf = function
   | string -> Sexp_impl.must_escape conf string
 ;;
 
-let minimal_escaping at =
-  let body =
-    String.concat_map at ~f:(fun char ->
-      match char with
-      | '"' | '\\' -> String.of_char '\\' ^ String.of_char char
-      | ' ' | '\t' | '\n' -> String.of_char char
-      | _ -> if Char.is_print char then String.of_char char else Char.escaped char)
-  in
-  String.concat [ "\""; body; "\"" ]
-;;
-
 let atom_escape conf at =
   match conf.atom_printing with
   | Escaped | Interpreted -> Sexp_impl.mach_maybe_esc_str conf at
-  | Minimal_escaping -> if Sexp_impl.must_escape conf at then minimal_escaping at else at
+  | Minimal_escaping ->
+    if Sexp_impl.must_escape conf at then Sexp_impl.minimal_escaping conf at else at
 ;;
 
 let atom_printing_len conf at =
@@ -202,7 +214,7 @@ let pp_atom conf state ~depth ~len index fmt at =
       then (
         match conf.atom_printing with
         | Escaped | Interpreted -> Sexp_impl.esc_str conf at
-        | Minimal_escaping -> minimal_escaping at)
+        | Minimal_escaping -> Sexp_impl.minimal_escaping conf at)
       else at
   in
   let should_be_colored =
@@ -238,6 +250,7 @@ module Normalize = struct
   type t =
     | Sexp of sexp * string list
     | Comment of comment
+  [@@deriving sexp]
 
   and comment =
     | Line_comment of string
@@ -248,42 +261,42 @@ module Normalize = struct
     | Atom of string
     | List of t list
 
-  let parse_sexps = Sexp.With_layout.Parser.sexps Sexp.With_layout.Lexer.main
-
-  module Pos = Sexplib.Src_pos.Relative
-
   let block_comment =
-    lazy
+    Portable_lazy.from_fun (fun () ->
       Re.(
         seq
           [ str "#|"
           ; group (seq [ group (rep (set "\t ")); rep (alt [ char '\n'; any ]) ])
           ; str "|#"
           ]
-        |> compile)
+        |> compile))
   ;;
 
-  let word_split = lazy (Re.Str.regexp "[ \n\t]+")
-  let trailing = lazy (Re.Str.regexp "\\(.*\\b\\)[ \t]*$")
+  let word_split = Portable_lazy.from_fun (fun () -> Re.Pcre.regexp "[ \n\t]+")
+  let trailing = Portable_lazy.from_fun (fun () -> Re.Pcre.regexp "(.*\\b)[ \t]*$")
   let tab_size = 2
 
   type match_dimension =
     | Horizontal
     | Vertical
 
-  let match_block_comment comment = Re.exec_opt (force block_comment) comment
+  let match_block_comment comment =
+    Re.exec_opt (Portable_lazy.force block_comment) comment
+  ;;
+
   let is_block_comment comment = Option.is_some (match_block_comment comment)
 
   let grab_comments pos list =
-    let rec loop dimension acc pos = function
+    let rec loop dimension acc (pos : Parsexp.Positions.pos) = function
       | [] -> acc, []
       | W.Sexp _ :: _ as list -> acc, list
-      | (W.Comment (W.Plain_comment (cpos, content)) as comment) :: rest ->
+      | (W.Comment (W.Plain_comment { loc = cpos; comment = content }) as comment) :: rest
+        ->
         if (match dimension with
-            | Horizontal -> pos.Pos.row = cpos.Pos.row
-            | Vertical -> pos.Pos.col = cpos.Pos.col)
+            | Horizontal -> pos.line = cpos.start_pos.line
+            | Vertical -> pos.col = cpos.start_pos.col)
            && not (is_block_comment content)
-        then loop Vertical (content :: acc) cpos rest
+        then loop Vertical (content :: acc) cpos.start_pos rest
         else acc, comment :: rest
       | W.Comment (W.Sexp_comment _) :: _ as list -> acc, list
     in
@@ -298,11 +311,11 @@ module Normalize = struct
       Option.value
         ~default:(`Atom atom)
         (Option.try_with (fun () ->
-           match parse_sexps (Lexing.from_string atom) with
+           match Parsexp.Many_cst.parse_string_exn atom with
            (* Perhaps normalized the atom, but nothing more to do. *)
-           | [ W.Sexp (W.Atom (_, _atom_without_spaces, None)) ] -> `Atom atom
+           | [ W.Sexp (W.Atom { unescaped = None; _ }) ] -> `Atom atom
            (* Nested atom, try again. *)
-           | [ W.Sexp (W.Atom (_, inner_atom, Some source)) ] ->
+           | [ W.Sexp (W.Atom { atom = inner_atom; unescaped = Some source; _ }) ] ->
              if String.equal inner_atom source
              then `Atom atom (* avoid an infinite loop of reinterpreting the atom *)
              else (
@@ -313,7 +326,7 @@ module Normalize = struct
                   pre_process_atom *)
                | `List lst -> `List lst)
            (* Parsed one whole sexp, bubble it up. *)
-           | [ W.Sexp (W.List (_, list, _)) ] -> `List list
+           | [ W.Sexp (W.List { elements = list; _ }) ] -> `List list
            (* It would cause problems if we parsed a comment in the case the atom is a
               commented out sexp. We will be conservative here and we won't parse the
               comment.
@@ -348,9 +361,9 @@ module Normalize = struct
              let concatenate_atoms lst =
                List.group ~break lst
                |> List.map ~f:(function
-                 | W.Sexp (W.Atom (pos, _, _)) :: _ as atoms ->
+                 | W.Sexp (W.Atom { loc; _ }) :: _ as atoms ->
                    let get_atom_contents = function
-                     | W.Sexp (W.Atom (_, a, _)) -> a
+                     | W.Sexp (W.Atom { atom = a; _ }) -> a
                      | _ -> assert false
                      (* List.group guarantees that we have only Atoms
                         here *)
@@ -361,7 +374,13 @@ module Normalize = struct
                    let escaped_atom_contents =
                      Sexp_impl.mach_maybe_esc_str conf atom_contents
                    in
-                   [ W.Sexp (W.Atom (pos, atom_contents, Some escaped_atom_contents)) ]
+                   [ W.Sexp
+                       (W.Atom
+                          { loc
+                          ; atom = atom_contents
+                          ; unescaped = Some escaped_atom_contents
+                          })
+                   ]
                  | W.Sexp (W.List _) :: _ as lists -> lists
                  | W.Comment _ :: _ as comments -> comments
                  | [] -> [] (* cant really happen *))
@@ -375,27 +394,17 @@ module Normalize = struct
     | Conservative_print -> String.split comment ~on:'\n'
     | Pretty_print ->
       String.strip comment
-      |> Re.Str.split (force word_split)
+      |> Re.Pcre.split ~rex:(Portable_lazy.force word_split)
       |> List.map ~f:(fun line ->
-        if Re.Str.string_match (force trailing) line 0
-        then Re.Str.matched_group 1 line
-        else line)
+        match Re.exec_opt (Portable_lazy.force trailing) line with
+        | Some groups -> Re.Group.get groups 0
+        | None -> line)
       |> List.filter ~f:(fun s -> String.length s > 0)
   ;;
 
   let get_size string =
     String.count string ~f:(fun c -> Char.equal c ' ')
     + (String.count string ~f:(fun c -> Char.equal c '\t') * tab_size)
-  ;;
-
-  let atom_end_position ~(pos : Pos.t) ~atom ~quoted =
-    match quoted with
-    | None -> { pos with col = pos.col + String.length atom }
-    | Some quoted_string ->
-      String.fold quoted_string ~init:pos ~f:(fun pos char ->
-        match char with
-        | '\n' -> { row = pos.row + 1; col = 0 }
-        | _ -> { pos with col = pos.col + 1 })
   ;;
 
   exception Drop_exn
@@ -408,11 +417,11 @@ module Normalize = struct
     | W.Sexp sexp -> Sexp (of_sexp conf sexp, [])
 
   and of_sexp (conf : Config.t) : W.t -> sexp = function
-    | W.Atom (pos, atom, _escaped) ->
-      (match pre_process_atom conf pos atom with
+    | W.Atom { loc; atom; _ } ->
+      (match pre_process_atom conf loc atom with
        | `Atom atom -> Atom atom
        | `List list -> of_sexp_or_comment_list conf list)
-    | W.List (_, list, _) -> of_sexp_or_comment_list conf list
+    | W.List { elements; _ } -> of_sexp_or_comment_list conf elements
 
   and of_sexp_or_comment_list (conf : Config.t) : W.t_or_comment list -> sexp =
     fun list ->
@@ -428,10 +437,10 @@ module Normalize = struct
          [conf.sticky_comments = Same_line], it ties the comments to the sexp instead *)
       let rec reorder acc = function
         | [] -> acc
-        | W.Sexp (W.Atom (pos, atom, quoted) as sexp) :: rest ->
-          reorder_comments acc (atom_end_position ~pos ~atom ~quoted) sexp rest
-        | W.Sexp (W.List (_, _, pos) as sexp) :: rest ->
-          reorder_comments acc pos sexp rest
+        | W.Sexp (W.Atom { loc; _ } as sexp) :: rest ->
+          reorder_comments acc loc.end_pos sexp rest
+        | W.Sexp (W.List { loc; _ } as sexp) :: rest ->
+          reorder_comments acc loc.end_pos sexp rest
         | W.Comment comment :: rest ->
           reorder (Comment (of_comment conf comment) :: acc) rest
       and reorder_comments acc pos sexp rest =
@@ -449,7 +458,7 @@ module Normalize = struct
       List (reorder [] list |> List.rev)
 
   and of_comment (conf : Config.t) : W.comment -> comment = function
-    | W.Plain_comment (_, comment) ->
+    | W.Plain_comment { comment; _ } ->
       (match conf.comments with
        | Drop -> raise Drop_exn
        | Print (indent, _, style) ->
@@ -463,13 +472,11 @@ module Normalize = struct
             let text = pre_process_block_comment style (Re.Group.get group 1) in
             Block_comment (indent, text)
           | None -> Line_comment comment))
-    | W.Sexp_comment (_, comment_list, sexp) ->
+    | W.Sexp_comment { comments; sexp; _ } ->
       (match conf.comments with
        | Drop -> raise Drop_exn
        | Print _ ->
-         let comm_list =
-           List.map comment_list ~f:(fun comment -> of_comment conf comment)
-         in
+         let comm_list = List.map comments ~f:(fun comment -> of_comment conf comment) in
          let sexp = of_sexp conf sexp in
          Sexp_comment (comm_list, sexp))
   ;;
@@ -1140,22 +1147,28 @@ let run ~next conf fmt =
   Format.pp_print_flush fmt ()
 ;;
 
-let dummy_pos = { Sexplib.Src_pos.Relative.row = 0; col = 0 }
+let dummy_pos = Parsexp.Positions.beginning_of_file
+let dummy_range = { Parsexp.Positions.start_pos = dummy_pos; end_pos = dummy_pos }
 
 let rec sexp_to_sexp_or_comment conf = function
   | Sexp.Atom at ->
     let fmt_at = Some (Sexp_impl.mach_maybe_esc_str conf at) in
-    W.Sexp (W.Atom (dummy_pos, at, fmt_at))
+    W.Sexp (W.Atom { loc = dummy_range; atom = at; unescaped = fmt_at })
   | Sexp.List list ->
     W.Sexp
-      (W.List (dummy_pos, List.map list ~f:(sexp_to_sexp_or_comment conf), dummy_pos))
+      (W.List
+         { loc = dummy_range; elements = List.map list ~f:(sexp_to_sexp_or_comment conf) })
 ;;
 
 module Make (M : sig
+  @@ portable
     type t
 
-    val to_sexp_or_comment : Config.t -> t -> Sexp.With_layout.t_or_comment
-  end) : S with type sexp := M.t = struct
+    val to_sexp_or_comment : Config.t -> t -> Parsexp.Cst.t_or_comment
+  end) : sig
+  @@ portable
+  include S with type sexp := M.t
+end = struct
   type 'a writer = Config.t -> 'a -> M.t -> unit
 
   let pp_formatter conf fmt sexp =
@@ -1204,8 +1217,8 @@ module Make (M : sig
   ;;
 
   let sexp_to_string =
-    let config = lazy (Config.create ~color:false ()) in
-    fun sexp -> pretty_string (Lazy.force config) sexp
+    let config = Portable_lazy.from_fun (fun () -> Config.create ~color:false ()) in
+    fun sexp -> pretty_string (Portable_lazy.force config) sexp
   ;;
 end
 
@@ -1215,8 +1228,68 @@ include Make (struct
     let to_sexp_or_comment = sexp_to_sexp_or_comment
   end)
 
-module Sexp_with_layout = Make (struct
+module Parsexp_cst = Make (struct
     type t = W.t_or_comment
 
     let to_sexp_or_comment (_ : Config.t) = Fn.id
+  end)
+
+let sexp_with_layout_to_sexp_or_comment sexp_with_layout_or_comment =
+  let convert_pos (pos : Sexplib.Sexp.With_layout.pos) : Parsexp.Positions.pos =
+    { line = pos.row; col = pos.col; offset = 0 }
+  in
+  let atom_end_position ~(pos : Sexplib.Sexp.With_layout.pos) ~atom ~unescaped =
+    convert_pos
+      (match unescaped with
+       | None -> { pos with col = pos.col + String.length atom }
+       | Some quoted_string ->
+         String.fold quoted_string ~init:pos ~f:(fun pos char ->
+           match char with
+           | '\n' -> { row = pos.row + 1; col = 0 }
+           | _ -> { pos with col = pos.col + 1 }))
+  in
+  let convert_range (pos : Sexplib.Sexp.With_layout.pos) ~len : Parsexp.Positions.range =
+    let start_pos = convert_pos pos in
+    { start_pos
+    ; end_pos =
+        { start_pos with col = start_pos.col + len; offset = start_pos.offset + len }
+    }
+  in
+  let rec convert_sexp_or_comment
+    : Sexplib.Sexp.With_layout.t_or_comment -> W.t_or_comment
+    = function
+    | Sexp s -> W.Sexp (convert_sexp s)
+    | Comment comment -> W.Comment (convert_comment comment)
+  and convert_comment : Sexplib.Sexp.With_layout.comment -> W.comment = function
+    | Plain_comment (pos, comment) ->
+      W.Plain_comment { loc = convert_range pos ~len:(String.length comment); comment }
+    | Sexp_comment (pos, comments, sexp) ->
+      W.Sexp_comment
+        { hash_semi_pos = convert_pos pos
+        ; comments = List.map comments ~f:convert_comment
+        ; sexp = convert_sexp sexp
+        }
+  and convert_sexp : Sexplib.Sexp.With_layout.t -> W.t = function
+    | Atom (pos, atom, unescaped) ->
+      W.Atom
+        { loc =
+            { start_pos = convert_pos pos
+            ; end_pos = atom_end_position ~pos ~atom ~unescaped
+            }
+        ; atom
+        ; unescaped
+        }
+    | List (start_pos, elements, end_pos) ->
+      W.List
+        { loc = { start_pos = convert_pos start_pos; end_pos = convert_pos end_pos }
+        ; elements = List.map elements ~f:convert_sexp_or_comment
+        }
+  in
+  convert_sexp_or_comment sexp_with_layout_or_comment
+;;
+
+module Sexp_with_layout = Make (struct
+    type t = Sexplib.Sexp.With_layout.t_or_comment
+
+    let to_sexp_or_comment (_ : Config.t) = sexp_with_layout_to_sexp_or_comment
   end)

@@ -12,10 +12,11 @@ build: [
 depends: [
   "ocaml" {>= "5.1.0"}
   "base"
+  "parsexp"
   "ppx_base"
   "sexplib"
   "dune"     {>= "3.17.0"}
-  "re"       {>= "1.8.0"}
+  "re"       {= "1.14.0+ox"}
 ]
 available: arch != "arm32" & arch != "x86_32"
 synopsis: "S-expression pretty-printer"

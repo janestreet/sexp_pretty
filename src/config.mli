@@ -1,3 +1,5 @@
+@@ portable
+
 open! Base
 
 type color =
@@ -129,7 +131,7 @@ type encoding =
 type t =
   { indent : int
   ; data_alignment : data_alignment
-  ; color_scheme : color array
+  ; color_scheme : color iarray
   ; atom_coloring : atom_coloring
   ; atom_printing : atom_printing
   ; paren_coloring : paren_coloring
