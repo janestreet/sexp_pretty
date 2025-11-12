@@ -1,7 +1,7 @@
 (library
  (name sexp_pretty_test)
  (libraries textutils.ascii_table_kernel base_quickcheck core
-   expect_test_helpers_core.expect_test_helpers_base sexp_pretty
-   sexp_string_quickcheck expect_test_helpers_core sexplib)
+   expect_test_helpers_core.expect_test_helpers_base expect_test_helpers_core
+   sexp_pretty sexp_string_quickcheck sexplib)
  (preprocess
   (pps ppx_jane)))
