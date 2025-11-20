@@ -43,7 +43,7 @@ module type Sexp_pretty = sig @@ portable
 
     and comment =
       | Line_comment of string
-      (* Does not contain the "#|" "|#"; contains its indentation size. *)
+      (*=Does not contain the "#|" "|#"; contains its indentation size. *)
       | Block_comment of int * string list
       | Sexp_comment of comment list * sexp
 

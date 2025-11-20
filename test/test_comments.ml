@@ -383,8 +383,8 @@ module Test_helper = struct
   ;;
 end
 
-(* [Sexp_pretty] doesn't promise to round-trip. Let's limit ourselves to inputs
-   that round-tripped up to the number of comments. *)
+(* [Sexp_pretty] doesn't promise to round-trip. Let's limit ourselves to inputs that
+   round-tripped up to the number of comments. *)
 let round_trippable_sexps style =
   let equal_num_comments a b =
     Comparable.lift

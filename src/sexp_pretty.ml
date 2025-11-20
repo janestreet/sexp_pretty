@@ -321,9 +321,8 @@ module Normalize = struct
              else (
                match pre_process_atom conf pos inner_atom with
                | `Atom _ -> `Atom atom
-               (* original atom is better since it contains original
-                  spacing which will be stripped off by
-                  pre_process_atom *)
+               (* original atom is better since it contains original spacing which will be
+                  stripped off by pre_process_atom *)
                | `List lst -> `List lst)
            (* Parsed one whole sexp, bubble it up. *)
            | [ W.Sexp (W.List { elements = list; _ }) ] -> `List list
@@ -348,8 +347,8 @@ module Normalize = struct
                     | _ -> false) -> (* we parsed a plain string *) `Atom atom
            | sexps ->
              (* If atom was created by failwiths or structural_sexp, it would looks like
-                this:
-                "human-readable message followed by (potentially (long and (ugly sexp)))"
+                this: "human-readable message followed by (potentially (long and (ugly
+                sexp)))"
 
                 We will try to preserve human-readable part by concatenating all sequences
                 of top-level atoms into singe atom *)
@@ -365,8 +364,7 @@ module Normalize = struct
                    let get_atom_contents = function
                      | W.Sexp (W.Atom { atom = a; _ }) -> a
                      | _ -> assert false
-                     (* List.group guarantees that we have only Atoms
-                        here *)
+                     (* List.group guarantees that we have only Atoms here *)
                    in
                    let atom_contents =
                      List.map ~f:get_atom_contents atoms |> String.concat ~sep:" "
@@ -507,7 +505,7 @@ module Print = struct
 
   and comment =
     | Line_comment of string
-    | Block_comment of int * string list (* Does not contain the #| |#*)
+    | Block_comment of int * string list (*=Does not contain the #| |#*)
     | Sexp_comment of (comment list * forces_breakline) * sexp
 
   and sexp =
@@ -647,7 +645,8 @@ module Print = struct
            if atom_count < atom_thresh && char_count <= char_thresh
            then
              Leaf (atom_len, atom), atom_count + 1, char_count
-             (* Breached the number of atoms threshold or the number of characters threshold. *)
+             (* Breached the number of atoms threshold or the number of characters
+                threshold. *)
            else raise Cant_align
          | None -> raise Cant_align)
       | N.Sexp (_, _ :: _) -> raise Cant_align
@@ -786,7 +785,7 @@ module Print = struct
       | Leaf (tab, at) ->
         Format.pp_set_tab fmt ();
         pp_atom conf state ~depth ~len:1 index fmt at;
-        (* Spaces that should still be printed*)
+        (* Spaces that should still be printed *)
         tab - atom_printing_len_exn conf at
       | Node shape_list ->
         Format.pp_set_tab fmt ();
@@ -1018,9 +1017,10 @@ module Print = struct
             let f =
               match color with
               | Some _ -> Format.fprintf fmt "@{<c %d>@[<h>#|%a|#@]@}"
-              (* This is an ugly hack not to print anything if colors are disabled. The opening
-                 tag works fine, as it checks whether or not anything should be printed. The
-                 closing one doesn't (it can't have any arguments, which is bad).
+              (* This is an ugly hack not to print anything if colors are disabled. The
+                 opening tag works fine, as it checks whether or not anything should be
+                 printed. The closing one doesn't (it can't have any arguments, which is
+                 bad).
               *)
               | None -> Format.fprintf fmt "@{<c %d}@[<h>#|%a|#@]"
             in
