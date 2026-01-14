@@ -334,8 +334,8 @@ module Normalize = struct
            (* Results in an empty. We keep the original. *)
            | [] -> `Atom atom
            (* Parsed a list of multiple sexps. It could either be spliced into the current
-              list, or put into a new Sexp list.
-              At the moment, they are put into separate lists.
+              list, or put into a new Sexp list. At the moment, they are put into separate
+              lists.
            *)
            (* If needed, we could traverse [sexps] and adjust positions so that they
               corespond to the respective positions in the original file. Also, we could
