@@ -42,9 +42,9 @@ let char_threshold_of_sexp sexp =
 ;;
 
 (* Depth is the depth of an atom. For example, in (a (b (c) d)), the depth of a is 1, the
-   depth of b and d is 2, and depth of c is 3.
-   Depth_threshold usually refers to the maximum depth of any atom in a list for it to be
-   considered for certain heuristic, e.g. data alignment.
+   depth of b and d is 2, and depth of c is 3. Depth_threshold usually refers to the
+   maximum depth of any atom in a list for it to be considered for certain heuristic, e.g.
+   data alignment.
 *)
 type depth_threshold = Depth_threshold of int [@@deriving sexp]
 
@@ -60,8 +60,8 @@ type aligned_parens = Parens_alignment of bool [@@deriving sexp]
 
 type data_alignment =
   | Data_not_aligned
-  (* Character threshold is excluding spaces and parentheses, the maximum depth can't exceed
-     the depth threshold.
+  (* Character threshold is excluding spaces and parentheses, the maximum depth can't
+     exceed the depth threshold.
   *)
   | Data_aligned of aligned_parens * atom_threshold * char_threshold * depth_threshold
 [@@deriving sexp]
@@ -116,7 +116,7 @@ type atom_printing =
   | Interpreted (* Try to interpret atoms as sexps. *)
 [@@deriving sexp]
 
-(* Singleton_lists are lists of the following format
+(*=Singleton_lists are lists of the following format
 
    (ATOM_1 .. ATOM_N (....))
 
@@ -145,18 +145,17 @@ type separator =
 [@@deriving sexp]
 
 (* Should closing parentheses be on the same line as the last sexp in the list (modulo
-   comments), or should they be on new lines?
-   Should opening parentheses always be on the same line as what follows them, or should
-   they sometimes (when the first item in the list is a list followed by some other sexp)
-   be on a separate line?
+   comments), or should they be on new lines? Should opening parentheses always be on the
+   same line as what follows them, or should they sometimes (when the first item in the
+   list is a list followed by some other sexp) be on a separate line?
 *)
 type parens =
   | Same_line
   | New_line
 [@@deriving sexp]
 
-(* Where to put the line comments corresponding to some sexp?
-   For example, if the original input is
+(* Where to put the line comments corresponding to some sexp? For example, if the original
+   input is
 
    {v
       SEXP ;comment1
@@ -171,8 +170,8 @@ type parens =
       SEXP
    v}
 
-   If [Same_line], put the first comment right after the sexp, on the same line,
-   and align the rest of the comments:
+   If [Same_line], put the first comment right after the sexp, on the same line, and align
+   the rest of the comments:
 
    {v
       SEXP ;comment1
@@ -218,8 +217,8 @@ type t =
   ; comments : comments [@default Print (Indent_comment 3, Some Green, Pretty_print)]
   ; singleton_limit : singleton_limit
        [@default Singleton_limit (Atom_threshold 3, Character_threshold 15)]
-  ; (* Number of atoms that will be marked as leading in regular lists. They will be put on
-       a single line, if they fit.
+  ; (* Number of atoms that will be marked as leading in regular lists. They will be put
+       on a single line, if they fit.
     *)
     leading_threshold : atom_threshold * char_threshold
        [@default Atom_threshold 3, Character_threshold 20]
