@@ -6,6 +6,7 @@ bug-reports: "https://github.com/janestreet/sexp_pretty/issues"
 dev-repo: "git+https://github.com/janestreet/sexp_pretty.git"
 doc: "https://ocaml.janestreet.com/ocaml-core/latest/doc/sexp_pretty/index.html"
 license: "MIT"
+x-maintenance-intent: ["(latest)"]
 build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
