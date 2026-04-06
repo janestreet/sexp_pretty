@@ -2,5 +2,5 @@
  (name sexp_pretty)
  (public_name sexp_pretty)
  (preprocess
-  (pps ppx_base))
+  (pps ppx_base -compare-require-explicit-locality))
  (libraries base parsexp re sexplib))
