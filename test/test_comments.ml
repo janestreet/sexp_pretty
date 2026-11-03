@@ -388,7 +388,7 @@ end
 let round_trippable_sexps style =
   let equal_num_comments a b =
     Comparable.lift
-      [%compare.equal: int]
+      ([%compare.equal: int] [@mode local])
       ~f:(fun list -> get_comment_strings list |> List.length)
       a
       b
@@ -404,7 +404,7 @@ let round_trippable_sexps style =
 let test_one style =
   let equal a b =
     Comparable.lift
-      [%equal: string list]
+      ([%equal: string list] [@mode local])
       ~f:(fun list -> get_comment_strings list |> List.map ~f:(postprocess_comment style))
       a
       b

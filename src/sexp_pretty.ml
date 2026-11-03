@@ -32,24 +32,67 @@ module Sexp_impl = struct
     Sexp_impl.esc_str
   ;;
 
+  let backslash = Uchar.of_char '\\'
+  let uchar_of_digit n = Uchar.of_char (Char.unsafe_of_int (Char.to_int '0' + n))
+
+  (* ASCII characters that print literally inside a quoted atom. *)
+  let is_unescaped_ascii_char = function
+    | '"' | '\\' -> false
+    | ' ' | '\t' | '\n' -> true
+    | char -> Char.is_print char
+  ;;
+
+  let maybe_escape_ascii_char char =
+    match char with
+    | '"' | '\\' -> String.of_char '\\' ^ String.of_char char
+    | _ -> if is_unescaped_ascii_char char then String.of_char char else Char.escaped char
+  ;;
+
   let minimal_escaping conf at =
     let body =
       match conf.encoding with
-      | Ascii ->
-        String.concat_map at ~f:(fun char ->
-          match char with
-          | '"' | '\\' -> String.of_char '\\' ^ String.of_char char
-          | ' ' | '\t' | '\n' -> String.of_char char
-          | _ -> if Char.is_print char then String.of_char char else Char.escaped char)
+      | Ascii -> String.concat_map at ~f:maybe_escape_ascii_char
       | Utf8 ->
-        String.Utf8.of_string at
-        |> String.Utf8.to_list
-        |> List.concat_map ~f:(fun char ->
-          match Uchar.to_char char with
-          | Some ('"' | '\\') -> [ Uchar.of_char '\\'; char ]
-          | _ -> [ char ])
-        |> String.Utf8.of_list
-        |> String.Utf8.to_string
+        if String.Utf8.is_valid at
+           && String.for_all at ~f:(fun char ->
+             Char.to_int char >= 128 || is_unescaped_ascii_char char)
+        then at
+        else (
+          let[@tail_mod_cons] rec decode_or_escape byte_pos =
+            if byte_pos >= String.length at
+            then []
+            else (
+              let decode = String.Utf8.get_unchecked at ~byte_pos in
+              let bytes_consumed = Uchar.Decode_result.bytes_consumed decode in
+              match Uchar.Decode_result.uchar decode with
+              | None -> escape byte_pos ~count:bytes_consumed
+              | Some uchar ->
+                (match Uchar.to_char uchar with
+                 | Some char when Char.to_int char < 128 ->
+                   (* ASCII characters are escaped as in the [Ascii] encoding. *)
+                   prepend
+                     (maybe_escape_ascii_char char)
+                     ~pos:0
+                     (byte_pos + bytes_consumed)
+                 | _ -> uchar :: decode_or_escape (byte_pos + bytes_consumed)))
+          and[@tail_mod_cons] prepend string ~pos byte_pos =
+            if pos >= String.length string
+            then decode_or_escape byte_pos
+            else
+              Uchar.of_char (String.get string pos)
+              :: prepend string ~pos:(pos + 1) byte_pos
+          and[@tail_mod_cons] escape byte_pos ~count =
+            if count <= 0
+            then decode_or_escape byte_pos
+            else (
+              let n = Char.to_int (String.get at byte_pos) in
+              backslash
+              :: uchar_of_digit (n / 100)
+              :: uchar_of_digit (n / 10 % 10)
+              :: uchar_of_digit (n % 10)
+              :: escape (byte_pos + 1) ~count:(count - 1))
+          in
+          String.Utf8.to_string (String.Utf8.of_list (decode_or_escape 0)))
     in
     String.concat [ "\""; body; "\"" ]
   ;;

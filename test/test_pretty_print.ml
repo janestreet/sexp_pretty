@@ -677,6 +677,43 @@ let%expect_test "non-ascii chars" =
     |}]
 ;;
 
+let%expect_test "[Minimal_escaping] with [Utf8] encoding" =
+  let conf =
+    { (Config.create ~color:false ()) with
+      atom_printing = Minimal_escaping
+    ; encoding = Utf8
+    }
+  in
+  let test ?cr sexp =
+    Expect_test_helpers_base.require_does_not_raise ?cr (fun () ->
+      let pretty = pretty_string conf sexp in
+      (* Show a hexdump if the output contains non-printable ASCII bytes other than
+         newline, so that the expected output stays readable text. *)
+      if String.exists pretty ~f:(fun c ->
+           Char.to_int c < 128 && not (Char.is_print c || Char.equal c '\n'))
+      then print_string (String.Hexdump.to_string_hum pretty)
+      else print_string pretty;
+      Expect_test_helpers_base.require_equal (module Sexp) (Sexp.of_string pretty) sexp)
+  in
+  (* Valid UTF-8 prints literally, with verbatim newlines. *)
+  test (Atom "✨ sparkles\nsecond line");
+  [%expect
+    {|
+    "✨ sparkles
+    second line"
+    |}];
+  (* Atoms are partially escaped if they contain invalid utf8 encoding. *)
+  test (Atom "\xff\xfe \\ \" binary \xff\xfe こ");
+  [%expect {| "\255\254 \\ \" binary \255\254 こ" |}];
+  (* Non-printable ASCII characters in otherwise valid UTF-8. *)
+  test (Atom "\000\001 \r \127 こ");
+  [%expect {| "\000\001 \r \127 こ" |}];
+  (* Multi-byte characters adjacent to escaped ASCII, including those whose code points
+     fit in a byte. *)
+  test (Atom "\"é\" \001é");
+  [%expect {| "\"é\" \001é" |}]
+;;
+
 let%expect_test "quickcheck round-tripping" =
   let module Sexp_utf8 = struct
     type t = Sexp.t [@@deriving sexp_of, quickcheck ~shrinker]
