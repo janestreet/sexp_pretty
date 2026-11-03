@@ -4,4 +4,4 @@
    expect_test_helpers_base expect_test_helpers_core sexp_pretty
    sexp_string_quickcheck sexplib)
  (preprocess
-  (pps ppx_jane)))
+  (pps ppx_jane -compare-require-explicit-locality)))
